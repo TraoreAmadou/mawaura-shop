@@ -36,9 +36,9 @@ const featuredProducts: Product[] = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-zinc-900">
-      {/* HERO AVEC IMAGE DE FOND */}
-      <section className="relative min-h-[70vh] lg:min-h-[80vh]">
-        {/* Image de fond */}
+      {/* HERO + PIÈCES PHARES AVEC LA MÊME IMAGE DE FOND */}
+      <section className="relative">
+        {/* Image de fond sur toute la hauteur de la section */}
         <div className="absolute inset-0">
           <Image
             src="/mawaura-hero.jpg"
@@ -50,12 +50,13 @@ export default function Home() {
           />
         </div>
 
-        {/* Overlay (voile) pour rendre le texte lisible */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/20" />
+        {/* Overlay (voile) pour garder le texte lisible sur le hero */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white/70" />
 
-        {/* Contenu du hero : texte + CTA */}
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 flex items-center">
-          <div className="max-w-xl">
+        {/* Contenu (hero + pièces phares) */}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 sm:pt-20 sm:pb-20">
+          {/* HERO */}
+          <div className="max-w-xl py-8 sm:py-10">
             <p className="tracking-[0.35em] uppercase text-[11px] sm:text-xs text-zinc-500 mb-4">
               MAWAURA ACCESSORIES
             </p>
@@ -88,113 +89,156 @@ export default function Home() {
               ✨ Chaque pièce est une histoire à porter.
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* Section produits phares */}
-      <section
-        id="collection"
-        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-semibold">
-              Pièces phares
-            </h2>
-            <p className="mt-2 text-sm sm:text-base text-zinc-600 max-w-md">
-              Une sélection de bijoux Mawaura pour commencer à écrire votre
-              histoire, éclat après éclat.
-            </p>
-          </div>
-          <p className="text-xs sm:text-sm text-zinc-500">
-            Collection disponible bientôt — restez connectée ✨
-          </p>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredProducts.map((product) => (
-            <article
-              key={product.id}
-              className="relative border border-zinc-200 rounded-2xl p-5 bg-white hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              {product.tag && (
-                <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
-                  {product.tag}
-                </span>
-              )}
-              <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
-                {/* Ici plus tard tu mettras une vraie image produit */}
-                Image du bijou à venir
+          {/* SECTION PIÈCES PHARES (toujours sur la même image de fond) */}
+          <section id="collection" className="mt-10 sm:mt-14">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-semibold">
+                  Pièces phares
+                </h2>
+                <p className="mt-2 text-sm sm:text-base text-zinc-600 max-w-md">
+                  Une sélection de bijoux Mawaura pour commencer à écrire votre
+                  histoire, éclat après éclat.
+                </p>
               </div>
-              <h3 className="text-sm sm:text-base font-medium mb-1">
-                {product.name}
-              </h3>
-              <p className="text-xs sm:text-sm text-zinc-600 mb-3">
-                {product.description}
+              <p className="text-xs sm:text-sm text-zinc-500">
+                Collection disponible bientôt — restez connectée ✨
               </p>
-              <p className="text-sm font-semibold text-yellow-600">
-                {product.price}
-              </p>
-            </article>
-          ))}
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredProducts.map((product) => (
+                <article
+                  key={product.id}
+                  className="relative border border-zinc-200 rounded-2xl p-5 bg-white/90 backdrop-blur-sm hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                >
+                  {product.tag && (
+                    <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
+                      {product.tag}
+                    </span>
+                  )}
+                  <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
+                    {/* Ici plus tard tu mettras une vraie image produit */}
+                    Image du bijou à venir
+                  </div>
+                  <h3 className="text-sm sm:text-base font-medium mb-1">
+                    {product.name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-zinc-600 mb-3">
+                    {product.description}
+                  </p>
+                  <p className="text-sm font-semibold text-yellow-600">
+                    {product.price}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
       </section>
 
-      {/* Section univers de marque */}
-      <section className="border-t border-zinc-200 bg-zinc-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 grid gap-10 md:grid-cols-2">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-semibold mb-3">
+      {/* Section univers de marque avec IMAGE DE FOND (SANS VOILE GLOBAL, TEXTE FONCÉ) */}
+      {/* Section univers de marque avec image de fond + effets dynamiques */}
+      <section className="relative border-t border-zinc-200 overflow-hidden">
+        {/* Image de fond pour l'univers Mawaura */}
+        <div className="absolute inset-0">
+          <Image
+            src="/sect_univers.jpg"
+            alt="Univers Mawaura Accessories"
+            fill
+            className="object-cover"
+            sizes="100vw"
+          />
+        </div>
+
+        {/* Contenu avec blocs blancs pour lisibilité */}
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 grid gap-10 md:grid-cols-[1.1fr,0.9fr] items-start">
+          {/* Colonne gauche : storytelling dans un bloc blanc semi-transparent */}
+          <div className="group relative rounded-2xl bg-white/90 px-4 sm:px-6 py-5 shadow-md border border-zinc-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            {/* Petit accent doré qui apparaît au survol */}
+            <div className="pointer-events-none absolute -left-3 top-10 h-10 w-1 rounded-full bg-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            <p className="tracking-[0.3em] uppercase text-[11px] text-zinc-500 mb-3">
               L&apos;univers Mawaura
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-zinc-900">
+              Une féminité lumineuse, douce mais affirmée.
             </h2>
-            <p className="text-sm sm:text-base text-zinc-700 leading-relaxed mb-4">
-              Mawaura Accessories est né de l&apos;envie de créer des bijoux
-              qui parlent de vous avant même que vous ne disiez un mot. Inspiré
-              par Mawa, chaque détail est pensé pour refléter une féminité
-              lumineuse, douce mais affirmée.
+
+            {/* Quote mise en avant */}
+            <div className="rounded-2xl border border-yellow-100 bg-white/90 px-4 sm:px-5 py-4 mb-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 group-hover:shadow-lg">
+              <p className="text-sm sm:text-base text-zinc-700 italic">
+                « Nos bijoux ne crient pas pour être vus. Ils révèlent simplement la
+                lumière qui est déjà en vous. »
+              </p>
+            </div>
+
+            <p className="text-sm sm:text-base text-zinc-700 leading-relaxed mb-3">
+              Mawaura Accessories est né de l&apos;envie de créer des bijoux qui
+              parlent de vous avant même que vous ne disiez un mot. Inspiré par Mawa,
+              chaque détail est pensé pour refléter une féminité lumineuse, délicate,
+              mais sûre d&apos;elle.
             </p>
             <p className="text-sm sm:text-base text-zinc-600 leading-relaxed">
-              Nos pièces sont imaginées pour s&apos;intégrer à votre vie
-              quotidienne : un café entre amies, une présentation importante, un
-              dîner improvisé. Toujours là, jamais de trop.
+              Nos pièces sont imaginées pour s&apos;intégrer à votre vie quotidienne :
+              un café entre amies, une présentation importante, un dîner improvisé.
+              Toujours là, jamais de trop.
             </p>
+
+            {/* Petits “pills” valeurs */}
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px] sm:text-xs">
+              <span className="rounded-full bg-white px-3 py-1 border border-zinc-200 text-zinc-700">
+                ✧ Élégance quotidienne
+              </span>
+              <span className="rounded-full bg-white px-3 py-1 border border-zinc-200 text-zinc-700">
+                ✧ Finitions soignées
+              </span>
+              <span className="rounded-full bg-white px-3 py-1 border border-zinc-200 text-zinc-700">
+                ✧ Aura & confiance
+              </span>
+            </div>
           </div>
+
+          {/* Colonne droite : cartes “manifesto” plus dynamiques */}
           <div className="space-y-4 text-sm sm:text-base">
-            <div className="flex gap-3">
-              <span className="mt-1 text-yellow-500">✧</span>
-              <div>
-                <h3 className="font-medium">Élégance douce</h3>
-                <p className="text-zinc-600">
-                  Des bijoux qui accompagnent votre style sans le dominer,
-                  pensés pour durer dans le temps.
-                </p>
-              </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+              <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
+                <span className="text-yellow-500">①</span> Pensé comme une signature
+              </h3>
+              <p className="text-zinc-600">
+                Chaque pièce Mawaura est conçue pour s&apos;accorder à votre style
+                naturel, pas pour le remplacer. Vous restez le centre, le bijou
+                souligne votre présence.
+              </p>
             </div>
-            <div className="flex gap-3">
-              <span className="mt-1 text-yellow-500">✧</span>
-              <div>
-                <h3 className="font-medium">Pensé pour vous</h3>
-                <p className="text-zinc-600">
-                  Une attention particulière portée aux détails : confort,
-                  légèreté, finitions soignées.
-                </p>
-              </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+              <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
+                <span className="text-yellow-500">②</span> Confort & légèreté
+              </h3>
+              <p className="text-zinc-600">
+                Des pièces pensées pour être portées du matin au soir : légères,
+                agréables sur la peau, faciles à associer à vos tenues du quotidien.
+              </p>
             </div>
-            <div className="flex gap-3">
-              <span className="mt-1 text-yellow-500">✧</span>
-              <div>
-                <h3 className="font-medium">Un futur e-shop</h3>
-                <p className="text-zinc-600">
-                  Bientôt, vous pourrez commander vos pièces Mawaura
-                  directement en ligne, en toute simplicité et sécurité.
-                </p>
-              </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+              <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
+                <span className="text-yellow-500">③</span> Une vision à long terme
+              </h3>
+              <p className="text-zinc-600">
+                Notre objectif : construire un e-shop de référence pour des bijoux
+                accessibles, élégants et durables, avec une expérience en ligne simple
+                et soignée.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Footer simple */}
+
+      {/* Footer */}
       <footer className="border-t border-zinc-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-zinc-500">
           <p>
