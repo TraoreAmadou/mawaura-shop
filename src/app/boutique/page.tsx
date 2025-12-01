@@ -128,8 +128,8 @@ export default function BoutiquePage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <article
-              key={product.id}
-              className="relative border border-zinc-200 rounded-2xl p-4 sm:p-5 bg-white hover:border-yellow-400/80 shadow-sm hover:shadow-md transition-all"
+            key={product.id}
+            className="relative border border-zinc-200 rounded-2xl p-4 sm:p-5 bg-white hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               {/* Badges */}
               <div className="absolute top-4 left-4 flex gap-2">
