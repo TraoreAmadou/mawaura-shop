@@ -180,11 +180,20 @@ export default function Home() {
             © {new Date().getFullYear()} Mawaura Accessories. Tous droits
             réservés.
           </p>
-          <p className="text-zinc-400">
-            Site en construction — développé avec ❤️ et ambition.
-          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link
+              href="/mentions-legales"
+              className="hover:text-zinc-700"
+            >
+              Mentions légales
+            </Link>
+            <Link href="/cgv" className="hover:text-zinc-700">
+              CGV
+            </Link>
+          </div>
         </div>
       </footer>
+
     </main>
   );
 }
