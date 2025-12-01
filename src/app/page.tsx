@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 type Product = {
   id: number;
@@ -35,37 +36,57 @@ const featuredProducts: Product[] = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-zinc-900">
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        {/* halo doré en fond */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#facc15_0,_transparent_55%)] opacity-40 pointer-events-none" />
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <p className="tracking-[0.35em] uppercase text-xs sm:text-sm text-zinc-500 mb-4">
-            MAWAURA ACCESSORIES
-          </p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-zinc-900 max-w-2xl">
-            Bijoux créés pour{" "}
-            <span className="text-yellow-500">révéler votre aura.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-sm sm:text-base text-zinc-600 leading-relaxed">
-            Inspiré par Mawa, Mawaura Accessories célèbre une élégance douce,
-            féminine et assumée. Des bijoux pensés comme une signature
-            personnelle, pas comme un simple accessoire.
-          </p>
+      {/* HERO AVEC IMAGE DE FOND */}
+      <section className="relative min-h-[70vh] lg:min-h-[80vh]">
+        {/* Image de fond */}
+        <div className="absolute inset-0">
+          <Image
+            src="/mawaura-hero.jpg"
+            alt="Bijoux Mawaura Accessories"
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+        </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <a
-              href="#collection"
-              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-yellow-400 hover:border-yellow-400 transition-colors"
-            >
-              Voir les pièces phares
-            </a>
-            <Link
-              href="/boutique"
-              className="text-sm text-yellow-700 underline-offset-4 hover:underline"
-            >
-              Accéder à la boutique complète
-            </Link>
+        {/* Overlay (voile) pour rendre le texte lisible */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/20" />
+
+        {/* Contenu du hero : texte + CTA */}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 flex items-center">
+          <div className="max-w-xl">
+            <p className="tracking-[0.35em] uppercase text-[11px] sm:text-xs text-zinc-500 mb-4">
+              MAWAURA ACCESSORIES
+            </p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-zinc-900">
+              Bijoux créés pour{" "}
+              <span className="text-yellow-500">révéler votre aura.</span>
+            </h1>
+            <p className="mt-5 text-sm sm:text-base text-zinc-600 leading-relaxed">
+              Inspiré par Mawa, Mawaura Accessories célèbre une élégance douce,
+              féminine et assumée. Des bijoux pensés comme une signature
+              personnelle, pour briller sans en faire trop.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <a
+                href="#collection"
+                className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-yellow-400 hover:border-yellow-400 transition-colors"
+              >
+                Voir les pièces phares
+              </a>
+              <Link
+                href="/boutique"
+                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
+              >
+                Accéder à la boutique complète
+              </Link>
+            </div>
+
+            <p className="mt-4 text-xs sm:text-sm text-zinc-500">
+              ✨ Chaque pièce est une histoire à porter.
+            </p>
           </div>
         </div>
       </section>
@@ -93,8 +114,8 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {featuredProducts.map((product) => (
             <article
-            key={product.id}
-            className="relative border border-zinc-200 rounded-2xl p-5 bg-white hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+              key={product.id}
+              className="relative border border-zinc-200 rounded-2xl p-5 bg-white hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               {product.tag && (
                 <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
@@ -103,7 +124,7 @@ export default function Home() {
               )}
               <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
                 {/* Ici plus tard tu mettras une vraie image produit */}
-                Aperçu visuel à venir
+                Image du bijou à venir
               </div>
               <h3 className="text-sm sm:text-base font-medium mb-1">
                 {product.name}
@@ -181,10 +202,7 @@ export default function Home() {
             réservés.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <Link
-              href="/mentions-legales"
-              className="hover:text-zinc-700"
-            >
+            <Link href="/mentions-legales" className="hover:text-zinc-700">
               Mentions légales
             </Link>
             <Link href="/cgv" className="hover:text-zinc-700">
@@ -193,7 +211,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
     </main>
   );
 }
