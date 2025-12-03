@@ -52,6 +52,14 @@ export function Navbar() {
             })}
           </div>
 
+          {/* Se connecter */}
+          <Link
+            href="/connexion"
+            className="text-[11px] sm:text-xs text-zinc-500 hover:text-zinc-900"
+          >
+            Se connecter
+          </Link>
+
           {/* Favoris */}
           <Link
             href="/favoris"
