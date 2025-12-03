@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/app/cart-context";
+import { useFavorites } from "@/app/favorites-context";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
   { href: "/boutique", label: "Boutique" },
-  // Tu pourras ajouter plus tard : { href: "/a-propos", label: "À propos" },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const { totalQuantity } = useCart();
+  const { totalFavorites } = useFavorites();
 
   return (
     <nav className="fixed inset-x-0 top-0 z-30 border-b border-zinc-200 bg-white/80 backdrop-blur-md">
@@ -27,8 +28,8 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Liens de navigation */}
-        <div className="flex items-center gap-6">
+        {/* Liens de navigation + actions */}
+        <div className="flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-4 text-xs sm:text-sm">
             {navLinks.map((link) => {
               const isActive =
@@ -51,7 +52,19 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Lien panier avec badge quantité */}
+          {/* Favoris */}
+          <Link
+            href="/favoris"
+            className="relative inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+          >
+            <span>Favoris</span>
+            <span className="text-sm">♡</span>
+            <span className="inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-zinc-900 text-white text-[10px] font-semibold">
+              {totalFavorites}
+            </span>
+          </Link>
+
+          {/* Panier */}
           <Link
             href="/panier"
             className="relative inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
