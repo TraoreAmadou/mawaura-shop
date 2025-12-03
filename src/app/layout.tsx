@@ -4,7 +4,8 @@ import "./globals.css";
 import { CartProvider } from "./cart-context";
 import { Navbar } from "@/components/Navbar";
 import { FavoritesProvider } from "./favorites-context";
-import AuthSessionProvider from "@/components/SessionProvider";
+// import AuthSessionProvider from "@/components/SessionProvider";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,3 +44,4 @@ export default function RootLayout({
     </html>
   );
 }
+

@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
     const existingUsername = await prisma.user.findUnique({
       where: { username },
     });
-
     if (existingUsername) {
       return NextResponse.json(
         { error: "Ce pseudo est déjà utilisé." },
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         birthdate: new Date(birthdate),
         hashedPassword,
-        role: "USER", // l'admin on le définira à la main ensuite
+        role: "USER", // l'admin on le fixera à la main ensuite
       },
     });
 

@@ -10,14 +10,15 @@ type Tab = "login" | "register";
 
 export default function ConnexionPage() {
   const [activeTab, setActiveTab] = useState<Tab>("login");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
   const router = useRouter();
 
   const handleLoginSubmit = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
-    setErrorMessage(null);
+    setMessage(null);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -25,7 +26,8 @@ export default function ConnexionPage() {
     const password = String(formData.get("password") || "");
 
     if (!identifier || !password) {
-      setErrorMessage("Merci de renseigner vos identifiants.");
+      setIsError(true);
+      setMessage("Merci de renseigner vos identifiants.");
       return;
     }
 
@@ -36,7 +38,8 @@ export default function ConnexionPage() {
     });
 
     if (result?.error) {
-      setErrorMessage("Identifiants incorrects. Merci de réessayer.");
+      setIsError(true);
+      setMessage("Identifiants incorrects. Merci de réessayer.");
     } else {
       // Connexion OK → redirection vers la boutique
       router.push("/boutique");
@@ -47,7 +50,7 @@ export default function ConnexionPage() {
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
-    setErrorMessage(null);
+    setMessage(null);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -64,12 +67,14 @@ export default function ConnexionPage() {
     };
 
     if (!body.password || !body.passwordConfirm) {
-      setErrorMessage("Merci de saisir et confirmer votre mot de passe.");
+      setIsError(true);
+      setMessage("Merci de saisir et confirmer votre mot de passe.");
       return;
     }
 
     if (body.password !== body.passwordConfirm) {
-      setErrorMessage("Les mots de passe ne correspondent pas.");
+      setIsError(true);
+      setMessage("Les mots de passe ne correspondent pas.");
       return;
     }
 
@@ -82,16 +87,15 @@ export default function ConnexionPage() {
     const data = await res.json();
 
     if (!res.ok) {
-      setErrorMessage(data?.error || "Erreur lors de l'inscription.");
+      setIsError(true);
+      setMessage(data?.error || "Erreur lors de l'inscription.");
       return;
     }
 
-    // Succès : on bascule sur l’onglet login
+    // Succès : on repasse sur l’onglet login avec un message
     setActiveTab("login");
-    setErrorMessage(
-      "Compte créé avec succès. Vous pouvez maintenant vous connecter."
-    );
-    // Optionnel : reset du formulaire
+    setIsError(false);
+    setMessage("Compte créé avec succès. Vous pouvez maintenant vous connecter.");
     form.reset();
   };
 
@@ -160,16 +164,11 @@ export default function ConnexionPage() {
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5 text-zinc-400">•</span>
-                    <p>
-                      Suivez vos commandes et votre historique d&apos;achats.
-                    </p>
+                    <p>Suivez vos commandes et votre historique d&apos;achats.</p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5 text-zinc-400">•</span>
-                    <p>
-                      Bénéficiez d&apos;une expérience plus fluide sur la
-                      boutique.
-                    </p>
+                    <p>Bénéficiez d&apos;une expérience plus fluide sur la boutique.</p>
                   </div>
                 </div>
 
@@ -191,7 +190,7 @@ export default function ConnexionPage() {
                     type="button"
                     onClick={() => {
                       setActiveTab("login");
-                      setErrorMessage(null);
+                      setMessage(null);
                     }}
                     className={`flex-1 px-4 py-3 text-center uppercase tracking-[0.22em] ${
                       activeTab === "login"
@@ -205,7 +204,7 @@ export default function ConnexionPage() {
                     type="button"
                     onClick={() => {
                       setActiveTab("register");
-                      setErrorMessage(null);
+                      setMessage(null);
                     }}
                     className={`flex-1 px-4 py-3 text-center uppercase tracking-[0.22em] ${
                       activeTab === "register"
@@ -218,9 +217,13 @@ export default function ConnexionPage() {
                 </div>
 
                 {/* Message d'erreur / info */}
-                {errorMessage && (
-                  <div className="px-5 sm:px-6 pt-3 text-xs sm:text-sm text-red-600">
-                    {errorMessage}
+                {message && (
+                  <div
+                    className={`px-5 sm:px-6 pt-3 text-xs sm:text-sm ${
+                      isError ? "text-red-600" : "text-emerald-600"
+                    }`}
+                  >
+                    {message}
                   </div>
                 )}
 
@@ -284,7 +287,7 @@ export default function ConnexionPage() {
 
                       <button
                         type="submit"
-                        className="mt-4 w-full inline-flex items-center justify-center border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.22em] text-white hover:bg:white hover:text-zinc-900 transition-colors"
+                        className="mt-4 w-full inline-flex items-center justify-center border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.22em] text-white hover:bg-white hover:text-zinc-900 transition-colors"
                       >
                         Se connecter
                       </button>
@@ -296,7 +299,7 @@ export default function ConnexionPage() {
                           className="underline underline-offset-4 hover:text-zinc-900"
                           onClick={() => {
                             setActiveTab("register");
-                            setErrorMessage(null);
+                            setMessage(null);
                           }}
                         >
                           Créer un compte
@@ -321,7 +324,7 @@ export default function ConnexionPage() {
                             name="firstname"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="Mawa"
                           />
                         </div>
@@ -337,7 +340,7 @@ export default function ConnexionPage() {
                             name="lastname"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="Traoré"
                           />
                         </div>
@@ -356,7 +359,7 @@ export default function ConnexionPage() {
                             name="username"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="mawaura_off"
                           />
                         </div>
@@ -372,7 +375,7 @@ export default function ConnexionPage() {
                             name="birthdate"
                             type="date"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                           />
                         </div>
                       </div>
@@ -389,7 +392,7 @@ export default function ConnexionPage() {
                             id="register-email"
                             name="email"
                             type="email"
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="vous@example.com"
                           />
                         </div>
@@ -404,7 +407,7 @@ export default function ConnexionPage() {
                             id="register-phone"
                             name="phone"
                             type="tel"
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="+33 6 12 34 56 78"
                           />
                         </div>
@@ -423,7 +426,7 @@ export default function ConnexionPage() {
                             name="password"
                             type="password"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="••••••••"
                           />
                         </div>
@@ -439,7 +442,7 @@ export default function ConnexionPage() {
                             name="passwordConfirm"
                             type="password"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg:white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="••••••••"
                           />
                         </div>
@@ -464,7 +467,7 @@ export default function ConnexionPage() {
                           className="underline underline-offset-4 hover:text-zinc-900"
                           onClick={() => {
                             setActiveTab("login");
-                            setErrorMessage(null);
+                            setMessage(null);
                           }}
                         >
                           Se connecter
