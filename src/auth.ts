@@ -1,4 +1,5 @@
-import type { NextAuthOptions } from "next-auth";
+// src/auth.ts
+import NextAuth, { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
@@ -6,7 +7,6 @@ import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
-  // plus simple : on utilise des sessions JWT
   session: {
     strategy: "jwt",
   },
@@ -28,7 +28,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // On accepte soit l'e-mail, soit le pseudo
+        // email OU pseudo
         const user = await prisma.user.findFirst({
           where: {
             OR: [
@@ -51,7 +51,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Ce qui sera accessible dans les callbacks / session
         return {
           id: user.id,
           name: user.name ?? user.username ?? undefined,
@@ -63,14 +62,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // quand l'utilisateur vient de se connecter
       if (user) {
+        // Quand on se connecte, on propage le rôle dans le token
         token.role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
-      // on propage le rôle côté client
+      // et on propage le rôle côté client
       if (session.user && token) {
         (session.user as any).role = token.role;
       }
@@ -78,6 +77,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/connexion", // pour que NextAuth utilise ta page
+    signIn: "/connexion",
   },
 };
+
+// (optionnel, si tu veux encore le handler ici, mais pas nécessaire)
+// const handler = NextAuth(authOptions);
+// export { handler as GET, handler as POST };

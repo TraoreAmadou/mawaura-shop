@@ -19,6 +19,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await requireAdmin();
+  // const session = "ADMIN"; // Pour tests locaux
+
   if (!session) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
