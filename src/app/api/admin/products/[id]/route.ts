@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
+async function requireAdmin(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-  if (!session || role !== "ADMIN") {
+  if (!token || (token as any).role !== "ADMIN") {
     return null;
   }
-  return session;
+  return token;
 }
 
 // DELETE /api/admin/products/:id
@@ -18,10 +19,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await requireAdmin();
-  // const session = "ADMIN"; // Pour tests locaux
-
-  if (!session) {
+  const token = await requireAdmin(req);
+  if (!token) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 

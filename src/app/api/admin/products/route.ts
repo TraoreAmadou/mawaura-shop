@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
+async function requireAdmin(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-  if (!session || role !== "ADMIN") {
+  if (!token || (token as any).role !== "ADMIN") {
     return null;
   }
-  return session;
+  return token;
 }
 
 // GET /api/admin/products → liste des produits
-export async function GET() {
-  const session = await requireAdmin();
-  // const session = "ADMIN"; // Pour tests locaux
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé " }, { status: 403 });
+export async function GET(req: NextRequest) {
+  const token = await requireAdmin(req);
+  if (!token) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
-  //else if ((session?.user as any)?.role !== "ADMIN") {
-    //return NextResponse.json({ error: "Accès réservé aux administrateurs." }, { status: 403 });
-  //}
 
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
@@ -33,10 +30,8 @@ export async function GET() {
 
 // POST /api/admin/products → créer un produit
 export async function POST(req: NextRequest) {
-  const session = await requireAdmin();
-  //const session = "ADMIN"; // Pour tests locaux
-
-  if (!session) {
+  const token = await requireAdmin(req);
+  if (!token) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
