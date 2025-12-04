@@ -91,12 +91,6 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
-              <Link
-                href="/boutique"
-                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
-              >
-                Accéder à la boutique complète
-              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -136,69 +130,91 @@ export default function Home() {
                 Les pièces phares seront bientôt disponibles.
               </p>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
                 {featuredProducts.map((product) => {
                   const favorite = isFavorite(product.id);
 
                   return (
                     <article
                       key={product.id}
-                      className="relative border border-zinc-200 rounded-2xl p-5 bg-white/90 backdrop-blur-sm hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                      className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                     >
-                      {/* Badge "Phare" en haut à droite */}
-                      <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
-                        Phare
-                      </span>
-
-                      <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
-                        Image du bijou à venir
+                      {/* Visuel placeholder, même style que Boutique */}
+                      <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                          Mawaura
+                        </span>
                       </div>
 
-                      {product.category && (
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
-                          {product.category}
-                        </p>
-                      )}
-                      <h3 className="text-sm sm:text-base font-medium mb-1">
-                        {product.name}
-                      </h3>
-                      {product.description && (
-                        <p className="text-xs sm:text-sm text-zinc-600 mb-3">
-                          {product.description}
-                        </p>
-                      )}
-                      <p className="text-sm font-semibold text-yellow-600 mb-3">
-                        {product.price.toFixed(2).replace(".", ",")} €
-                      </p>
+                      <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            {product.category && (
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mb-1">
+                                {product.category}
+                              </p>
+                            )}
+                            <h3 className="text-sm font-medium text-zinc-900 line-clamp-2">
+                              {product.name}
+                            </h3>
+                          </div>
+                          <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
+                            Phare
+                          </span>
+                        </div>
 
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            addItem({
-                              id: product.id,
-                              name: product.name,
-                              price: product.price,
-                            })
-                          }
-                          className="text-[11px] sm:text-xs font-medium rounded-full border border-yellow-500 text-yellow-700 px-3 py-1.5 hover:bg-yellow-500 hover:text-white transition-colors"
-                        >
-                          Ajouter au panier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleFavorite({
-                              id: product.id,
-                              name: product.name,
-                              price: product.price,
-                              category: product.category,
-                            })
-                          }
-                          className="text-[11px] sm:text-xs text-zinc-500 hover:text-red-500"
-                        >
-                          {favorite ? "♥ Retirer" : "♡ Favori"}
-                        </button>
+                        {product.description && (
+                          <p className="text-[11px] text-zinc-500 line-clamp-2">
+                            {product.description}
+                          </p>
+                        )}
+
+                        <div className="mt-1 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-zinc-900">
+                            {product.price.toFixed(2).replace(".", ",")} €
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addItem({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                              })
+                            }
+                            className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+                          >
+                            Ajouter au panier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleFavorite({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                category: product.category,
+                              })
+                            }
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+                            aria-label={
+                              favorite
+                                ? "Retirer des favoris"
+                                : "Ajouter aux favoris"
+                            }
+                          >
+                            <span
+                              className={`text-sm ${
+                                favorite ? "text-red-500" : "text-zinc-500"
+                              }`}
+                            >
+                              {favorite ? "♥" : "♡"}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </article>
                   );
