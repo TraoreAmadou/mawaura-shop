@@ -1,39 +1,53 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useCart } from "./cart-context";
+import { useFavorites } from "./favorites-context";
 
-type Product = {
-  id: number;
+type HomeProduct = {
+  id: string;
   name: string;
-  description: string;
-  price: string;
-  tag?: string;
+  description?: string | null;
+  price: number;
+  category?: string | null;
+  isFeatured?: boolean;
 };
 
-const featuredProducts: Product[] = [
-  {
-    id: 1,
-    name: "Boucles d’oreilles Aura",
-    description: "Fines et lumineuses, pour sublimer chaque mouvement.",
-    price: "29,90 €",
-    tag: "Nouveau",
-  },
-  {
-    id: 2,
-    name: "Collier Signature Mawaura",
-    description: "Un collier délicat pour révéler votre aura naturelle.",
-    price: "39,90 €",
-    tag: "Best-seller",
-  },
-  {
-    id: 3,
-    name: "Bracelet Lumière",
-    description: "Une touche dorée pour accompagner vos journées.",
-    price: "24,90 €",
-  },
-];
-
 export default function Home() {
+  const { addItem } = useCart();
+  const { toggleFavorite, isFavorite } = useFavorites();
+
+  const [products, setProducts] = useState<HomeProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (!res.ok) return;
+        setProducts(data);
+      } catch (err) {
+        console.error("Erreur chargement produits accueil:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeatured();
+  }, []);
+
+  const featuredProducts = useMemo(
+    () =>
+      products
+        .filter((p) => p.isFeatured)
+        .slice(0, 3), // comme ton ancienne section : 3 pièces phares
+    [products]
+  );
+
   return (
     <main className="min-h-screen bg-white text-zinc-900">
       {/* HERO + PIÈCES PHARES AVEC LA MÊME IMAGE DE FOND */}
@@ -73,7 +87,7 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="#collection"
-                className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-yellow-400 hover:border-yellow-400 transition-colors"
+                className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
               >
                 Voir les pièces phares
               </a>
@@ -102,43 +116,99 @@ export default function Home() {
                   histoire, éclat après éclat.
                 </p>
               </div>
-              <p className="text-xs sm:text-sm text-zinc-500">
-                Collection disponible bientôt — restez connectée ✨
-              </p>
+              {loading ? (
+                <p className="text-xs sm:text-sm text-zinc-500">
+                  Chargement de la sélection...
+                </p>
+              ) : (
+                <p className="text-xs sm:text-sm text-zinc-500">
+                  Collection disponible bientôt — restez connectée ✨
+                </p>
+              )}
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredProducts.map((product) => (
-                <article
-                  key={product.id}
-                  className="relative border border-zinc-200 rounded-2xl p-5 bg-white/90 backdrop-blur-sm hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
-                >
-                  {product.tag && (
-                    <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
-                      {product.tag}
-                    </span>
-                  )}
-                  <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
-                    {/* Ici plus tard tu mettras une vraie image produit */}
-                    Image du bijou à venir
-                  </div>
-                  <h3 className="text-sm sm:text-base font-medium mb-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-600 mb-3">
-                    {product.description}
-                  </p>
-                  <p className="text-sm font-semibold text-yellow-600">
-                    {product.price}
-                  </p>
-                </article>
-              ))}
-            </div>
+            {loading ? (
+              <p className="text-sm text-zinc-500">
+                Chargement des pièces phares...
+              </p>
+            ) : featuredProducts.length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                Les pièces phares seront bientôt disponibles.
+              </p>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredProducts.map((product) => {
+                  const favorite = isFavorite(product.id);
+
+                  return (
+                    <article
+                      key={product.id}
+                      className="relative border border-zinc-200 rounded-2xl p-5 bg-white/90 backdrop-blur-sm hover:border-yellow-400/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                    >
+                      {/* Badge "Phare" en haut à droite */}
+                      <span className="absolute top-4 right-4 text-[11px] uppercase tracking-[0.18em] bg-yellow-400 text-zinc-900 px-2 py-1 rounded-full">
+                        Phare
+                      </span>
+
+                      <div className="aspect-[4/3] rounded-xl bg-zinc-100 mb-4 flex items-center justify-center text-xs text-zinc-400">
+                        Image du bijou à venir
+                      </div>
+
+                      {product.category && (
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
+                          {product.category}
+                        </p>
+                      )}
+                      <h3 className="text-sm sm:text-base font-medium mb-1">
+                        {product.name}
+                      </h3>
+                      {product.description && (
+                        <p className="text-xs sm:text-sm text-zinc-600 mb-3">
+                          {product.description}
+                        </p>
+                      )}
+                      <p className="text-sm font-semibold text-yellow-600 mb-3">
+                        {product.price.toFixed(2).replace(".", ",")} €
+                      </p>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addItem({
+                              id: product.id,
+                              name: product.name,
+                              price: product.price,
+                            })
+                          }
+                          className="text-[11px] sm:text-xs font-medium rounded-full border border-yellow-500 text-yellow-700 px-3 py-1.5 hover:bg-yellow-500 hover:text-white transition-colors"
+                        >
+                          Ajouter au panier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleFavorite({
+                              id: product.id,
+                              name: product.name,
+                              price: product.price,
+                              category: product.category,
+                            })
+                          }
+                          className="text-[11px] sm:text-xs text-zinc-500 hover:text-red-500"
+                        >
+                          {favorite ? "♥ Retirer" : "♡ Favori"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
       </section>
 
-      {/* Section univers de marque avec IMAGE DE FOND (SANS VOILE GLOBAL, TEXTE FONCÉ) */}
       {/* Section univers de marque avec image de fond + effets dynamiques */}
       <section className="relative border-t border-zinc-200 overflow-hidden">
         {/* Image de fond pour l'univers Mawaura */}
@@ -237,14 +307,10 @@ export default function Home() {
         </div>
       </section>
 
-
       {/* Footer */}
       <footer className="border-t border-zinc-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-zinc-500">
-          <p>
-            © {new Date().getFullYear()} Mawaura Accessories. Tous droits
-            réservés.
-          </p>
+          <p>© 2025 Mawaura Accessories. Tous droits réservés.</p>
           <div className="flex flex-wrap items-center gap-4">
             <Link href="/mentions-legales" className="hover:text-zinc-700">
               Mentions légales
