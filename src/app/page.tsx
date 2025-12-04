@@ -44,7 +44,7 @@ export default function Home() {
     () =>
       products
         .filter((p) => p.isFeatured)
-        .slice(0, 3), // comme ton ancienne section : 3 pièces phares
+        .slice(0, 3), // 3 pièces phares
     [products]
   );
 
@@ -52,7 +52,7 @@ export default function Home() {
     <main className="min-h-screen bg-white text-zinc-900">
       {/* HERO + PIÈCES PHARES AVEC LA MÊME IMAGE DE FOND */}
       <section className="relative">
-        {/* Image de fond sur toute la hauteur de la section */}
+        {/* Image de fond */}
         <div className="absolute inset-0">
           <Image
             src="/mawaura-hero.jpg"
@@ -64,10 +64,10 @@ export default function Home() {
           />
         </div>
 
-        {/* Overlay (voile) pour garder le texte lisible sur le hero */}
+        {/* Voile */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white/70" />
 
-        {/* Contenu (hero + pièces phares) */}
+        {/* Contenu */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 sm:pt-20 sm:pb-20">
           {/* HERO */}
           <div className="max-w-xl py-8 sm:py-10">
@@ -84,6 +84,7 @@ export default function Home() {
               personnelle, pour briller sans en faire trop.
             </p>
 
+            {/* ✅ Boutons comme au début : pièces phares + voir la boutique */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="#collection"
@@ -91,6 +92,12 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
+              <Link
+                href="/boutique"
+                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
+              >
+                Accéder à la boutique complète
+              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -98,9 +105,9 @@ export default function Home() {
             </p>
           </div>
 
-          {/* SECTION PIÈCES PHARES (toujours sur la même image de fond) */}
+          {/* SECTION PIÈCES PHARES */}
           <section id="collection" className="mt-10 sm:mt-14">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4 sm:mb-6">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-semibold">
                   Pièces phares
@@ -110,6 +117,17 @@ export default function Home() {
                   histoire, éclat après éclat.
                 </p>
               </div>
+              {/* ✅ Lien "Voir toute la boutique →" comme dans la boutique */}
+              <Link
+                href="/boutique"
+                className="text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 uppercase tracking-[0.18em]"
+              >
+                Voir toute la boutique →
+              </Link>
+            </div>
+
+            {/* Petit texte de statut (chargement / bientôt dispo) */}
+            <div className="mb-4">
               {loading ? (
                 <p className="text-xs sm:text-sm text-zinc-500">
                   Chargement de la sélection...
@@ -139,7 +157,7 @@ export default function Home() {
                       key={product.id}
                       className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                     >
-                      {/* Visuel placeholder, même style que Boutique */}
+                      {/* Visuel style Boutique */}
                       <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
                         <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                           Mawaura
@@ -240,9 +258,8 @@ export default function Home() {
 
         {/* Contenu avec blocs blancs pour lisibilité */}
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 grid gap-10 md:grid-cols-[1.1fr,0.9fr] items-start">
-          {/* Colonne gauche : storytelling dans un bloc blanc semi-transparent */}
+          {/* Colonne gauche : storytelling */}
           <div className="group relative rounded-2xl bg-white/90 px-4 sm:px-6 py-5 shadow-md border border-zinc-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-            {/* Petit accent doré qui apparaît au survol */}
             <div className="pointer-events-none absolute -left-3 top-10 h-10 w-1 rounded-full bg-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
             <p className="tracking-[0.3em] uppercase text-[11px] text-zinc-500 mb-3">
@@ -252,7 +269,6 @@ export default function Home() {
               Une féminité lumineuse, douce mais affirmée.
             </h2>
 
-            {/* Quote mise en avant */}
             <div className="rounded-2xl border border-yellow-100 bg-white/90 px-4 sm:px-5 py-4 mb-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 group-hover:shadow-lg">
               <p className="text-sm sm:text-base text-zinc-700 italic">
                 « Nos bijoux ne crient pas pour être vus. Ils révèlent simplement la
@@ -272,7 +288,6 @@ export default function Home() {
               Toujours là, jamais de trop.
             </p>
 
-            {/* Petits “pills” valeurs */}
             <div className="mt-5 flex flex-wrap gap-2 text-[11px] sm:text-xs">
               <span className="rounded-full bg-white px-3 py-1 border border-zinc-200 text-zinc-700">
                 ✧ Élégance quotidienne
@@ -286,7 +301,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Colonne droite : cartes “manifesto” plus dynamiques */}
+          {/* Colonne droite : cartes manifesto */}
           <div className="space-y-4 text-sm sm:text-base">
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
@@ -309,7 +324,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">③</span> Une vision à long terme
               </h3>
