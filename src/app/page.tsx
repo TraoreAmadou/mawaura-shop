@@ -15,6 +15,24 @@ type HomeProduct = {
   isFeatured?: boolean;
 };
 
+// ✅ Petit toast global pour le panier
+function CartNotification() {
+  const { lastAddedName, totalQuantity } = useCart();
+
+  if (!lastAddedName) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <div className="flex items-center gap-2 rounded-full bg-zinc-900/90 text-white text-xs sm:text-sm px-4 py-2 shadow-lg">
+        <span className="text-green-400 text-base">✓</span>
+        <span>
+          « {lastAddedName} » ajouté au panier • {totalQuantity} article(s)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { addItem } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -44,7 +62,7 @@ export default function Home() {
     () =>
       products
         .filter((p) => p.isFeatured)
-        .slice(0, 3), // 3 pièces phares
+        .slice(0, 3),
     [products]
   );
 
@@ -52,7 +70,7 @@ export default function Home() {
     <main className="min-h-screen bg-white text-zinc-900">
       {/* HERO + PIÈCES PHARES AVEC LA MÊME IMAGE DE FOND */}
       <section className="relative">
-        {/* Image de fond */}
+        {/* Image de fond sur toute la hauteur de la section */}
         <div className="absolute inset-0">
           <Image
             src="/mawaura-hero.jpg"
@@ -64,10 +82,10 @@ export default function Home() {
           />
         </div>
 
-        {/* Voile */}
+        {/* Overlay (voile) pour garder le texte lisible sur le hero */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white/70" />
 
-        {/* Contenu */}
+        {/* Contenu (hero + pièces phares) */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 sm:pt-20 sm:pb-20">
           {/* HERO */}
           <div className="max-w-xl py-8 sm:py-10">
@@ -84,7 +102,7 @@ export default function Home() {
               personnelle, pour briller sans en faire trop.
             </p>
 
-            {/* ✅ Boutons comme au début : pièces phares + voir la boutique */}
+            {/* Boutons hero */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="#collection"
@@ -105,7 +123,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* SECTION PIÈCES PHARES */}
+          {/* SECTION PIÈCES PHARES (toujours sur la même image de fond) */}
           <section id="collection" className="mt-10 sm:mt-14">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4 sm:mb-6">
               <div>
@@ -117,7 +135,6 @@ export default function Home() {
                   histoire, éclat après éclat.
                 </p>
               </div>
-              {/* ✅ Lien "Voir toute la boutique →" comme dans la boutique */}
               <Link
                 href="/boutique"
                 className="text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 uppercase tracking-[0.18em]"
@@ -126,7 +143,6 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Petit texte de statut (chargement / bientôt dispo) */}
             <div className="mb-4">
               {loading ? (
                 <p className="text-xs sm:text-sm text-zinc-500">
@@ -157,7 +173,7 @@ export default function Home() {
                       key={product.id}
                       className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                     >
-                      {/* Visuel style Boutique */}
+                      {/* Visuel placeholder, même style que Boutique */}
                       <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
                         <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                           Mawaura
@@ -314,7 +330,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">②</span> Confort & légèreté
               </h3>
@@ -352,6 +368,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Toast panier */}
+      <CartNotification />
     </main>
   );
 }

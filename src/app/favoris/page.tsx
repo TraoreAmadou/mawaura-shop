@@ -5,6 +5,24 @@ import Link from "next/link";
 import { useFavorites } from "../favorites-context";
 import { useCart } from "../cart-context";
 
+// ✅ Toast réutilisable
+function CartNotification() {
+  const { lastAddedName, totalQuantity } = useCart();
+
+  if (!lastAddedName) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <div className="flex items-center gap-2 rounded-full bg-zinc-900/90 text-white text-xs sm:text-sm px-4 py-2 shadow-lg">
+        <span className="text-green-400 text-base">✓</span>
+        <span>
+          « {lastAddedName} » ajouté au panier • {totalQuantity} article(s)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function FavorisPage() {
   const { items, removeFavorite, clearFavorites } = useFavorites();
   const { addItem } = useCart();
@@ -83,14 +101,14 @@ export default function FavorisPage() {
               </button>
             </div>
 
-            {/* 👉 Style aligné avec la Boutique : 2 / 3 colonnes, cartes dorées */}
+            {/* Grille style Boutique */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
               {items.map((item: any) => (
                 <article
                   key={item.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* Visuel placeholder en gradient, comme la boutique */}
+                  {/* visuel placeholder */}
                   <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
                     <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                       Mawaura
@@ -149,6 +167,27 @@ export default function FavorisPage() {
           </>
         )}
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-zinc-500">
+          <p>
+            © {new Date().getFullYear()} Mawaura Accessories. Tous droits
+            réservés.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link href="/mentions-legales" className="hover:text-zinc-700">
+              Mentions légales
+            </Link>
+            <Link href="/cgv" className="hover:text-zinc-700">
+              CGV
+            </Link>
+          </div>
+        </div>
+      </footer>
+
+      {/* Toast panier */}
+      <CartNotification />
     </main>
   );
 }

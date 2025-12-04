@@ -14,6 +14,24 @@ type ShopProduct = {
   isFeatured?: boolean;
 };
 
+// ✅ Petit composant de notification panier
+function CartNotification() {
+  const { lastAddedName, totalQuantity } = useCart();
+
+  if (!lastAddedName) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <div className="flex items-center gap-2 rounded-full bg-zinc-900/90 text-white text-xs sm:text-sm px-4 py-2 shadow-lg">
+        <span className="text-green-400 text-base">✓</span>
+        <span>
+          « {lastAddedName} » ajouté au panier • {totalQuantity} article(s)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function BoutiquePage() {
   const { addItem } = useCart(); // ✅ comme dans l’ancienne version
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -211,7 +229,7 @@ export default function BoutiquePage() {
                             price: product.price,
                           })
                         }
-                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg:white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
                       >
                         Ajouter au panier
                       </button>
@@ -248,6 +266,9 @@ export default function BoutiquePage() {
           </div>
         )}
       </section>
+
+      {/* Toast panier */}
+      <CartNotification />
     </main>
   );
 }

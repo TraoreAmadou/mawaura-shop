@@ -1,10 +1,12 @@
 "use client";
 
-import React, {
+import React,
+{
   createContext,
   useContext,
   useMemo,
   useState,
+  useRef,
   ReactNode,
 } from "react";
 
@@ -30,12 +32,15 @@ type CartContextType = {
   clearCart: () => void;
   totalQuantity: number;
   totalPrice: number;
+  lastAddedName: string | null; // ✅ pour le toast
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [lastAddedName, setLastAddedName] = useState<string | null>(null);
+  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
@@ -70,6 +75,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         },
       ];
     });
+
+    // ✅ gérer le toast "ajouté au panier"
+    if (lastAddedTimeoutRef.current) {
+      clearTimeout(lastAddedTimeoutRef.current);
+    }
+    setLastAddedName(item.name);
+    lastAddedTimeoutRef.current = setTimeout(() => {
+      setLastAddedName(null);
+    }, 2000);
   };
 
   const increment = (id: string | number) => {
@@ -120,6 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     totalQuantity,
     totalPrice,
+    lastAddedName, // ✅ exposé pour le toast
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
