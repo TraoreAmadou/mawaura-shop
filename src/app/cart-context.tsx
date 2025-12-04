@@ -3,89 +3,120 @@
 import React, {
   createContext,
   useContext,
+  useMemo,
   useState,
   ReactNode,
-  useMemo,
 } from "react";
 
 type CartItem = {
-  id: number;
+  id: string;
   name: string;
-  price: string; // ex : "29,90 €"
+  price: number; // en euros
   quantity: number;
+};
+
+type AddItemInput = {
+  id: string | number;
+  name: string;
+  price: number | string;
 };
 
 type CartContextType = {
   items: CartItem[];
-  addItem: (item: { id: number; name: string; price: string }) => void;
-  decreaseItem: (id: number) => void;
-  removeItem: (id: number) => void;
+  addItem: (item: AddItemInput) => void;
+  removeItem: (id: string | number) => void;
+  increment: (id: string | number) => void;
+  decrement: (id: string | number) => void;
   clearCart: () => void;
   totalQuantity: number;
-  totalPrice: number; // en euros
+  totalPrice: number;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-function parsePrice(price: string): number {
-  // "29,90 €" -> 29.9
-  const normalized = price
-    .replace(/\s/g, "")
-    .replace("€", "")
-    .replace(",", ".");
-  const value = Number.parseFloat(normalized);
-  return Number.isNaN(value) ? 0 : value;
-}
-
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addItem = (item: { id: number; name: string; price: string }) => {
-    setItems((prev) => {
-      const existing = prev.find((p) => p.id === item.id);
-      if (existing) {
-        return prev.map((p) =>
-          p.id === item.id ? { ...p, quantity: p.quantity + 1 } : p
-        );
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
+  const normalizePrice = (price: number | string): number => {
+    if (typeof price === "number") return price;
+
+    // ancien format "29,90 €" => on nettoie
+    const cleaned = price
+      .replace(/\s/g, "")
+      .replace("€", "")
+      .replace(",", ".");
+    const parsed = parseFloat(cleaned);
+    return Number.isNaN(parsed) ? 0 : parsed;
   };
 
-  const decreaseItem = (id: number) => {
+  const addItem = (item: AddItemInput) => {
+    const id = String(item.id);
+    const price = normalizePrice(item.price);
+
     setItems((prev) => {
       const existing = prev.find((p) => p.id === id);
-      if (!existing) return prev;
-      // si la quantité tombe à 0, on retire l'article
-      if (existing.quantity <= 1) {
-        return prev.filter((p) => p.id !== id);
+      if (existing) {
+        return prev.map((p) =>
+          p.id === id ? { ...p, quantity: p.quantity + 1 } : p
+        );
       }
-      return prev.map((p) =>
-        p.id === id ? { ...p, quantity: p.quantity - 1 } : p
-      );
+      return [
+        ...prev,
+        {
+          id,
+          name: item.name,
+          price,
+          quantity: 1,
+        },
+      ];
     });
   };
 
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  const increment = (id: string | number) => {
+    const key = String(id);
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === key ? { ...p, quantity: p.quantity + 1 } : p
+      )
+    );
   };
 
-  const clearCart = () => setItems([]);
-
-  const { totalQuantity, totalPrice } = useMemo(() => {
-    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = items.reduce(
-      (sum, item) => sum + parsePrice(item.price) * item.quantity,
-      0
+  const decrement = (id: string | number) => {
+    const key = String(id);
+    setItems((prev) =>
+      prev
+        .map((p) =>
+          p.id === key ? { ...p, quantity: p.quantity - 1 } : p
+        )
+        .filter((p) => p.quantity > 0)
     );
-    return { totalQuantity, totalPrice };
-  }, [items]);
+  };
+
+  const removeItem = (id: string | number) => {
+    const key = String(id);
+    setItems((prev) => prev.filter((p) => p.id !== key));
+  };
+
+  const clearCart = () => {
+    setItems([]);
+  };
+
+  const totalQuantity = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  );
+
+  const totalPrice = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
 
   const value: CartContextType = {
     items,
     addItem,
-    decreaseItem,
     removeItem,
+    increment,
+    decrement,
     clearCart,
     totalQuantity,
     totalPrice,
@@ -97,7 +128,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 export function useCart() {
   const ctx = useContext(CartContext);
   if (!ctx) {
-    throw new Error("useCart doit être utilisé à l'intérieur de CartProvider");
+    throw new Error("useCart must be used within a CartProvider");
   }
   return ctx;
 }

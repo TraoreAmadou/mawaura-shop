@@ -1,180 +1,211 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { useCart } from "../cart-context";
-
-function formatPrice(value: number): string {
-  return value.toFixed(2).replace(".", ",") + " €";
-}
 
 export default function PanierPage() {
   const {
     items,
     totalPrice,
     totalQuantity,
+    increment,
+    decrement,
     removeItem,
     clearCart,
-    addItem,
-    decreaseItem,
   } = useCart();
+
+  const hasItems = items.length > 0;
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
-      {/* Header / breadcrumb */}
+      {/* Bandeau haut */}
       <header className="border-b border-zinc-200 bg-zinc-50/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div>
-            <p className="tracking-[0.25em] uppercase text-[11px] text-zinc-500">
-              MAWAURA ACCESSORIES
-            </p>
-            <nav className="text-xs sm:text-sm text-zinc-500 mt-1">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-2">
+          <p className="tracking-[0.3em] uppercase text-[11px] text-yellow-600">
+            Mawaura Panier
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                Votre sélection
+              </h1>
+              <p className="text-sm sm:text-base text-zinc-600">
+                Retrouvez ici les bijoux que vous avez ajoutés à votre panier.
+              </p>
+            </div>
+            <nav className="text-[11px] sm:text-xs text-zinc-500">
               <Link href="/" className="hover:text-zinc-800">
                 Accueil
               </Link>
               <span className="mx-1">/</span>
-              <span className="text-zinc-700 font-medium">Panier</span>
+              <Link href="/boutique" className="hover:text-zinc-800">
+                Boutique
+              </Link>
+              <span className="mx-1">/</span>
+              <span className="text-zinc-800 font-medium">Panier</span>
             </nav>
           </div>
-          <Link
-            href="/boutique"
-            className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-800"
-          >
-            ← Continuer le shopping
-          </Link>
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-6">
-          Votre panier
-        </h1>
-
-        {items.length === 0 ? (
-          <div className="border border-dashed border-zinc-300 rounded-2xl p-8 text-center bg-zinc-50">
-            <p className="text-sm sm:text-base text-zinc-600 mb-2">
-              Votre panier est encore vide.
-            </p>
-            <p className="text-xs sm:text-sm text-zinc-500 mb-4">
-              Ajoutez vos pièces préférées depuis la boutique Mawaura.
-            </p>
-            <Link
-              href="/boutique"
-              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-yellow-400 hover:border-yellow-400 transition-colors"
-            >
-              Découvrir les bijoux
-            </Link>
-          </div>
-        ) : (
-          <div className="grid gap-8 md:grid-cols-[2fr,1fr]">
-            {/* Liste des articles */}
-            <div className="space-y-4">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 md:grid-cols-[2fr,1fr]">
+        {/* Colonne gauche : liste des articles */}
+        <div className="space-y-4">
+          {!hasItems ? (
+            <div className="border border-dashed border-zinc-300 rounded-2xl px-4 py-6 sm:px-6 sm:py-8 bg-zinc-50/60 text-center">
+              <p className="text-sm sm:text-base text-zinc-600 mb-3">
+                Votre panier est actuellement vide.
+              </p>
+              <Link
+                href="/boutique"
+                className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+              >
+                Découvrir les bijoux
+              </Link>
+            </div>
+          ) : (
+            <>
               {items.map((item) => {
-                const unitPrice = Number(
-                  item.price
-                    .replace(/\s/g, "")
-                    .replace("€", "")
-                    .replace(",", ".")
-                );
-                const subtotal =
-                  item.quantity * (Number.isNaN(unitPrice) ? 0 : unitPrice);
+                const lineTotal = item.price * item.quantity;
 
                 return (
                   <article
                     key={item.id}
-                    className="flex items-center justify-between gap-4 border border-zinc-200 rounded-2xl px-4 py-3 bg-white shadow-sm"
+                    className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex"
                   >
-                    <div>
-                      <h2 className="text-sm sm:text-base font-medium mb-1">
-                        {item.name}
-                      </h2>
-
-                      {/* Zone quantité avec boutons - et + */}
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-xs sm:text-sm text-zinc-600">
-                          Quantité :
-                        </span>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-2 py-1">
-                          <button
-                            type="button"
-                            onClick={() => decreaseItem(item.id)}
-                            className="w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
-                          >
-                            −
-                          </button>
-                          <span className="text-xs sm:text-sm min-w-[1.5rem] text-center">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addItem({
-                                id: item.id,
-                                name: item.name,
-                                price: item.price,
-                              })
-                            }
-                            className="w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-zinc-500">
-                        Prix unitaire : {item.price}
-                      </p>
+                    {/* Visuel placeholder */}
+                    <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                        Mawaura
+                      </span>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                      <p className="text-sm font-semibold text-yellow-700">
-                        Sous-total : {formatPrice(subtotal)}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="text-[11px] sm:text-xs text-red-500 hover:text-red-600"
-                      >
-                        Retirer l&apos;article
-                      </button>
+                    {/* Contenu */}
+                    <div className="flex-1 p-4 sm:p-5 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="text-sm sm:text-base font-medium text-zinc-900">
+                            {item.name}
+                          </h2>
+                          <p className="mt-1 text-[11px] text-zinc-500">
+                            Prix unitaire :{" "}
+                            {item.price.toFixed(2).replace(".", ",")} €
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="text-[11px] text-zinc-400 hover:text-red-500"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+
+                      {/* Quantité + total ligne */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                            Quantité
+                          </span>
+                          <div className="inline-flex items-center rounded-full border border-zinc-200 bg-white overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => decrement(item.id)}
+                              className="w-8 h-8 flex items-center justify-center text-sm text-zinc-600 hover:bg-zinc-50"
+                            >
+                              –
+                            </button>
+                            <span className="w-10 text-center text-sm text-zinc-900">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => increment(item.id)}
+                              className="w-8 h-8 flex items-center justify-center text-sm text-zinc-600 hover:bg-zinc-50"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                            Total
+                          </p>
+                          <p className="text-sm sm:text-base font-semibold text-zinc-900">
+                            {lineTotal.toFixed(2).replace(".", ",")} €
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </article>
                 );
               })}
-            </div>
 
-            {/* Résumé */}
-            <aside className="border border-zinc-200 rounded-2xl p-5 bg-zinc-50 shadow-sm">
-              <h2 className="text-sm sm:text-base font-semibold mb-4">
-                Résumé de la commande
-              </h2>
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-zinc-600">Articles</span>
-                <span className="font-medium">{totalQuantity}</span>
+              <div className="flex justify-between items-center mt-4 text-xs sm:text-sm">
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="text-zinc-500 hover:text-red-500"
+                >
+                  Vider le panier
+                </button>
+                <p className="text-zinc-500">
+                  {totalQuantity} article(s) dans votre panier
+                </p>
               </div>
-              <div className="flex items-center justify-between text-sm mb-4">
-                <span className="text-zinc-600">Total</span>
-                <span className="font-semibold text-yellow-700">
-                  {formatPrice(totalPrice)}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="w-full mb-3 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-yellow-400 hover:border-yellow-400 transition-colors disabled:opacity-60"
-                disabled
-              >
-                Paiement bientôt disponible
-              </button>
-              <button
-                type="button"
-                onClick={clearCart}
-                className="w-full text-[11px] sm:text-xs text-zinc-500 hover:text-zinc-700"
-              >
-                Vider le panier
-              </button>
-            </aside>
+            </>
+          )}
+        </div>
+
+        {/* Colonne droite : récapitulatif */}
+        <aside className="border border-zinc-200 rounded-2xl p-5 sm:p-6 bg-white shadow-sm h-fit">
+          <h2 className="text-sm sm:text-base font-semibold mb-4">
+            Récapitulatif
+          </h2>
+          <div className="space-y-2 text-sm text-zinc-700">
+            <div className="flex justify-between">
+              <span>Sous-total</span>
+              <span>
+                {totalPrice.toFixed(2).replace(".", ",")} €
+              </span>
+            </div>
+            <div className="flex justify-between text-zinc-500 text-xs">
+              <span>Livraison</span>
+              <span>Calculée ultérieurement</span>
+            </div>
           </div>
-        )}
+
+          <div className="mt-4 pt-4 border-t border-zinc-200">
+            <div className="flex justify-between items-center text-sm font-semibold">
+              <span>Total</span>
+              <span>
+                {totalPrice.toFixed(2).replace(".", ",")} €
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] text-zinc-500">
+              Les frais de livraison seront ajoutés lors de la validation de
+              commande.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={!hasItems}
+            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Valider mon panier
+          </button>
+
+          <div className="mt-3 text-center">
+            <Link
+              href="/boutique"
+              className="text-[11px] text-zinc-500 hover:text-zinc-800"
+            >
+              ← Continuer mes achats
+            </Link>
+          </div>
+        </aside>
       </section>
     </main>
   );
