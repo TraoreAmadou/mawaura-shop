@@ -19,14 +19,21 @@ async function requireAdmin(req: NextRequest) {
 // GET /api/admin/products/:id → détail produit + images
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const token = await requireAdmin(req);
   if (!token) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
-  const { id } = params;
+  const { id } = await context.params;
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Identifiant produit manquant." },
+      { status: 400 }
+    );
+  }
 
   try {
     const product = await prisma.product.findUnique({
@@ -58,14 +65,21 @@ export async function GET(
 // PUT /api/admin/products/:id → mise à jour produit + images
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const token = await requireAdmin(req);
   if (!token) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
-  const { id } = params;
+  const { id } = await context.params;
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Identifiant produit manquant." },
+      { status: 400 }
+    );
+  }
 
   try {
     const existing = await prisma.product.findUnique({
@@ -89,10 +103,8 @@ export async function PUT(
     const name = formData.get("name")?.toString().trim();
     const priceStr = formData.get("price")?.toString();
     const category = formData.get("category")?.toString().trim() || "";
-    const description = formData
-      .get("description")
-      ?.toString()
-      .trim() || "";
+    const description =
+      formData.get("description")?.toString().trim() || "";
     const tag = formData.get("tag")?.toString().trim() || "";
 
     const stockStr = formData.get("stock")?.toString() ?? "0";
@@ -121,9 +133,12 @@ export async function PUT(
     const priceCents = Math.round(priceNumber * 100);
 
     const stock = Number.parseInt(stockStr, 10);
-    const lowStockThreshold = Number.parseInt(lowStockThresholdStr, 10);
+    const lowStockThreshold = Number.parseInt(
+      lowStockThresholdStr,
+      10
+    );
 
-    // Nouveau slug basé sur le nom (facultatif, mais cohérent)
+    // Nouveau slug basé sur le nom
     const slug = name
       .toLowerCase()
       .normalize("NFD")
@@ -131,7 +146,7 @@ export async function PUT(
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
-    // Gestion des images : image0..image4 (remplacement partiel)
+    // Gestion des images (remplacement partiel)
     const uploadDir = path.join(process.cwd(), "public", "uploads", "products");
     await fs.mkdir(uploadDir, { recursive: true });
 
@@ -157,7 +172,6 @@ export async function PUT(
 
       const relativeUrl = `/uploads/products/${fileName}`;
 
-      // mettre à jour / créer l'image à cette position
       const existingImage = existing.images.find(
         (img) => img.position === position
       );
@@ -221,14 +235,21 @@ export async function PUT(
 // DELETE /api/admin/products/:id
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const token = await requireAdmin(req);
   if (!token) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
-  const { id } = params;
+  const { id } = await context.params;
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Identifiant produit manquant." },
+      { status: 400 }
+    );
+  }
 
   try {
     await prisma.product.delete({
