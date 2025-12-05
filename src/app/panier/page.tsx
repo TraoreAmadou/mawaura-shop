@@ -1,8 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import { useCart } from "../cart-context";
+
+type ApiProduct = {
+  id: string;
+  slug: string;
+  stock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
+  mainImageUrl?: string | null;
+};
+
+function getStockStatus(p?: ApiProduct | null) {
+  if (!p) return null;
+
+  if (!p.isActive) {
+    return { label: "Indisponible", variant: "danger" as const };
+  }
+  if (p.stock <= 0) {
+    return { label: "Bientôt de retour", variant: "warning" as const };
+  }
+  if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
+    return { label: "Derniers exemplaires", variant: "warning" as const };
+  }
+  return { label: "En stock", variant: "ok" as const };
+}
 
 export default function PanierPage() {
   const {
@@ -14,6 +38,27 @@ export default function PanierPage() {
     removeItem,
     clearCart,
   } = useCart();
+
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (res.ok) {
+          setProducts(data);
+        }
+      } catch (e) {
+        console.error("Erreur chargement produits panier:", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   const hasItems = items.length > 0;
 
@@ -67,63 +112,80 @@ export default function PanierPage() {
           ) : (
             <>
               {items.map((item) => {
+                const product = products.find(
+                  (p) => p.id === String(item.id)
+                );
+                const stockStatus = getStockStatus(product);
+
+                let stockClass = "";
+                if (stockStatus) {
+                  stockClass =
+                    stockStatus.variant === "ok"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : stockStatus.variant === "warning"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-red-200 bg-red-50 text-red-700";
+                }
+
                 const lineTotal = item.price * item.quantity;
+                const href = product
+                  ? `/boutique/${product.slug}`
+                  : "/boutique";
 
                 return (
                   <article
                     key={item.id}
                     className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex"
                   >
-                    {/* Visuel cliquable si slug dispo */}
-                    {item.slug ? (
-                      <Link
-                        href={`/boutique/${item.slug}`}
-                        className="hidden sm:flex w-32 md:w-40 bg-zinc-50 items-center justify-center relative overflow-hidden"
-                      >
-                        {item.imageUrl ? (
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="160px"
-                          />
-                        ) : (
+                    {/* Visuel */}
+                    <Link
+                      href={href}
+                      className="hidden sm:flex w-32 md:w-40 bg-zinc-100 items-center justify-center overflow-hidden"
+                    >
+                      {product?.mainImageUrl ? (
+                        <img
+                          src={product.mainImageUrl}
+                          alt={item.name}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-zinc-100">
                           <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                             Mawaura
                           </span>
-                        )}
-                      </Link>
-                    ) : (
-                      <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center">
-                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                          Mawaura
-                        </span>
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </Link>
 
                     {/* Contenu */}
                     <div className="flex-1 p-4 sm:p-5 flex flex-col gap-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          {item.slug ? (
-                            <Link
-                              href={`/boutique/${item.slug}`}
-                              className="hover:underline"
-                            >
-                              <h2 className="text-sm sm:text-base font-medium text-zinc-900">
-                                {item.name}
-                              </h2>
-                            </Link>
-                          ) : (
-                            <h2 className="text-sm sm:text-base font-medium text-zinc-900">
+                          <Link href={href}>
+                            <h2 className="text-sm sm:text-base font-medium text-zinc-900 hover:underline">
                               {item.name}
                             </h2>
-                          )}
+                          </Link>
                           <p className="mt-1 text-[11px] text-zinc-500">
                             Prix unitaire :{" "}
                             {item.price.toFixed(2).replace(".", ",")} €
                           </p>
+                          {stockStatus && (
+                            <p className="mt-1">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${stockClass}`}
+                              >
+                                {stockStatus.label}
+                              </span>
+                              {product &&
+                                product.stock > 0 &&
+                                stockStatus.label === "Derniers exemplaires" && (
+                                  <span className="ml-2 text-[11px] text-amber-700">
+                                    ({product.stock} restant(s))
+                                  </span>
+                                )}
+                            </p>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -155,6 +217,10 @@ export default function PanierPage() {
                               type="button"
                               onClick={() => increment(item.id)}
                               className="w-8 h-8 flex items-center justify-center text-sm text-zinc-600 hover:bg-zinc-50"
+                              disabled={
+                                stockStatus?.label === "Bientôt de retour" ||
+                                stockStatus?.label === "Indisponible"
+                              }
                             >
                               +
                             </button>
@@ -192,16 +258,14 @@ export default function PanierPage() {
         </div>
 
         {/* Colonne droite : récapitulatif */}
-        <aside className="border.border-zinc-200 rounded-2xl p-5 sm:p-6 bg-white shadow-sm h-fit">
+        <aside className="border border-zinc-200 rounded-2xl p-5 sm:p-6 bg-white shadow-sm h-fit">
           <h2 className="text-sm sm:text-base font-semibold mb-4">
             Récapitulatif
           </h2>
           <div className="space-y-2 text-sm text-zinc-700">
             <div className="flex justify-between">
               <span>Sous-total</span>
-              <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
-              </span>
+              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
             </div>
             <div className="flex justify-between text-zinc-500 text-xs">
               <span>Livraison</span>
@@ -212,9 +276,7 @@ export default function PanierPage() {
           <div className="mt-4 pt-4 border-t border-zinc-200">
             <div className="flex justify-between items-center text-sm font-semibold">
               <span>Total</span>
-              <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
-              </span>
+              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Les frais de livraison seront ajoutés lors de la validation de

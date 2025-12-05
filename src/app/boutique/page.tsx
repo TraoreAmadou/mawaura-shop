@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useCart } from "../cart-context";
 import { useFavorites } from "../favorites-context";
 
@@ -14,9 +13,33 @@ type ShopProduct = {
   category?: string | null;
   price: number; // en euros
   isFeatured?: boolean;
-  imageUrl?: string | null;
+  isNew?: boolean;
+  isBestSeller?: boolean;
+  tag?: string | null;
+  mainImageUrl?: string | null;
+  stock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
 };
 
+// Helper pour le status de stock
+function getStockStatus(p: ShopProduct) {
+  if (!p.isActive) {
+    return { label: "Indisponible", variant: "danger" as const };
+  }
+
+  if (p.stock <= 0) {
+    return { label: "Bientôt de retour", variant: "warning" as const };
+  }
+
+  if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
+    return { label: "Derniers exemplaires", variant: "warning" as const };
+  }
+
+  return { label: "En stock", variant: "ok" as const };
+}
+
+// ✅ Petit composant de notification panier
 function CartNotification() {
   const { lastAddedName, totalQuantity } = useCart();
 
@@ -91,7 +114,7 @@ export default function BoutiquePage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
-      {/* Bandeau haut */}
+      {/* Bandeau haut / breadcrumb simple */}
       <section className="border-b border-zinc-200 bg-zinc-50/70">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-2">
           <p className="tracking-[0.3em] uppercase text-[11px] text-yellow-600">
@@ -177,112 +200,148 @@ export default function BoutiquePage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
             {filteredProducts.map((product) => {
               const favorite = isFavorite(product.id);
+              const stockStatus = getStockStatus(product);
+
+              const stockClass =
+                stockStatus.variant === "ok"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : stockStatus.variant === "warning"
+                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                  : "border-red-200 bg-red-50 text-red-700";
 
               return (
                 <article
                   key={product.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* Zone cliquable → fiche produit */}
+                  {/* visuel */}
                   <Link
                     href={`/boutique/${product.slug}`}
-                    className="flex-1 flex flex-col"
+                    className="block overflow-hidden"
                   >
-                    <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative overflow-hidden">
-                      {product.imageUrl ? (
-                        <Image
-                          src={product.imageUrl}
+                    <div className="aspect-[3/4] bg-zinc-100 overflow-hidden">
+                      {product.mainImageUrl ? (
+                        <img
+                          src={product.mainImageUrl}
                           alt={product.name}
-                          fill
-                          className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
-                          sizes="(min-width: 768px) 33vw, 50vw"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
+                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-zinc-100">
                           <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                             Mawaura
                           </span>
                         </div>
                       )}
                     </div>
+                  </Link>
 
-                    <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h2 className="text-sm font-medium text-zinc-900 line-clamp-2">
+                  <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Link href={`/boutique/${product.slug}`}>
+                          <h2 className="text-sm font-medium text-zinc-900 line-clamp-2 hover:underline">
                             {product.name}
                           </h2>
-                          {product.category && (
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mt-1">
-                              {product.category}
-                            </p>
-                          )}
-                        </div>
-                        {product.isFeatured && (
-                          <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
-                            Phare
-                          </span>
+                        </Link>
+                        {product.category && (
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mt-1">
+                            {product.category}
+                          </p>
                         )}
                       </div>
 
-                      {product.description && (
-                        <p className="text-[11px] text-zinc-500 line-clamp-2">
-                          {product.description}
-                        </p>
-                      )}
+                      {/* Badges à droite */}
+                      <div className="flex flex-col items-end gap-1">
+                        {/* Badge stock */}
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`}
+                        >
+                          {stockStatus.label}
+                        </span>
 
-                      <div className="mt-1 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-zinc-900">
-                          {product.price.toFixed(2).replace(".", ",")} €
-                        </p>
+                        {/* Autres badges */}
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {product.isFeatured && (
+                            <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
+                              Phare
+                            </span>
+                          )}
+                          {product.isNew && (
+                            <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
+                              Nouveau
+                            </span>
+                          )}
+                          {product.isBestSeller && (
+                            <span className="inline-flex items-center rounded-full bg-zinc-100 text-zinc-800 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
+                              Best-seller
+                            </span>
+                          )}
+                          {product.tag && (
+                            <span className="inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200">
+                              {product.tag}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </Link>
 
-                  {/* Boutons */}
-                  <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-1 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addItem({
-                          id: product.id,
-                          name: product.name,
-                          price: product.price,
-                          slug: product.slug,
-                          imageUrl: product.imageUrl ?? null,
-                        })
-                      }
-                      className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
-                    >
-                      Ajouter au panier
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleFavorite({
-                          id: product.id,
-                          slug: product.slug,
-                          name: product.name,
-                          price: product.price,
-                          category: product.category ?? null,
-                          imageUrl: product.imageUrl ?? null,
-                        })
-                      }
-                      className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
-                      aria-label={
-                        favorite
-                          ? "Retirer des favoris"
-                          : "Ajouter aux favoris"
-                      }
-                    >
-                      <span
-                        className={`text-sm ${
-                          favorite ? "text-red-500" : "text-zinc-500"
-                        }`}
+                    {product.description && (
+                      <p className="text-[11px] text-zinc-500 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="mt-1 flex items-center justify-between">
+                      <p className="text-sm font-semibold text-zinc-900">
+                        {product.price.toFixed(2).replace(".", ",")} €
+                      </p>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addItem({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            // si ton contexte panier accepte slug / image, tu peux les passer ici aussi
+                          })
+                        }
+                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-60"
+                        disabled={!product.isActive || product.stock <= 0}
                       >
-                        {favorite ? "♥" : "♡"}
-                      </span>
-                    </button>
+                        {product.stock <= 0 || !product.isActive
+                          ? "Indisponible"
+                          : "Ajouter au panier"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleFavorite({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            category: product.category ?? undefined,
+                          })
+                        }
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+                        aria-label={
+                          favorite
+                            ? "Retirer des favoris"
+                            : "Ajouter aux favoris"
+                        }
+                      >
+                        <span
+                          className={`text-sm ${
+                            favorite ? "text-red-500" : "text-zinc-500"
+                          }`}
+                        >
+                          {favorite ? "♥" : "♡"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </article>
               );
@@ -291,6 +350,7 @@ export default function BoutiquePage() {
         )}
       </section>
 
+      {/* Toast panier */}
       <CartNotification />
     </main>
   );
