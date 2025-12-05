@@ -14,6 +14,7 @@ type Product = {
   isFeatured: boolean;
   isActive: boolean;
   createdAt: string;
+  mainImageUrl?: string | null;
 };
 
 export default function AdminPage() {
@@ -65,15 +66,20 @@ export default function AdminPage() {
     }));
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSaving(true);
     try {
+      const formEl = e.currentTarget;
+      const formData = new FormData(formEl);
+
+      // on force la valeur booléenne dans le FormData
+      formData.set("isFeatured", form.isFeatured ? "true" : "false");
+
       const res = await fetch("/api/admin/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -81,6 +87,9 @@ export default function AdminPage() {
         return;
       }
       setProducts((prev) => [data, ...prev]);
+
+      // reset
+      formEl.reset();
       setForm({
         name: "",
         price: "",
@@ -184,6 +193,7 @@ export default function AdminPage() {
           )}
           <form
             onSubmit={handleCreate}
+            encType="multipart/form-data"
             className="grid gap-4 sm:grid-cols-2 text-sm"
           >
             <div className="space-y-1.5 sm:col-span-2">
@@ -240,6 +250,24 @@ export default function AdminPage() {
                 onChange={handleChange}
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 min-h-[60px]"
                 placeholder="Une phrase qui décrit le bijou..."
+              />
+            </div>
+
+            {/* ✅ upload d’images (max 5) */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
+                Images du bijou (jusqu&apos;à 5)
+              </label>
+              <p className="text-[11px] text-zinc-500 mb-1">
+                Uploadez vos images produits. La première image sera utilisée
+                comme visuel principal sur la boutique.
+              </p>
+              <input
+                name="images"
+                type="file"
+                accept="image/*"
+                multiple
+                className="block w-full text-xs text-zinc-600 file:mr-3 file:rounded-full file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-700 hover:file:border-zinc-500"
               />
             </div>
 

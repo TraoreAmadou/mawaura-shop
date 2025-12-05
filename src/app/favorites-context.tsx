@@ -8,18 +8,18 @@ import React, {
   ReactNode,
 } from "react";
 
-type FavoriteItem = {
-  id: number;
+export type FavoriteItem = {
+  id: string;               // ✅ string comme les ids Prisma
   name: string;
-  price: string;
-  category?: string;
+  price: number;            // ✅ number comme /api/products
+  category?: string | null;
 };
 
 type FavoritesContextType = {
   items: FavoriteItem[];
   toggleFavorite: (item: FavoriteItem) => void;
-  isFavorite: (id: number) => boolean;
-  removeFavorite: (id: number) => void;
+  isFavorite: (id: string) => boolean;
+  removeFavorite: (id: string) => void;
   clearFavorites: () => void;
   totalFavorites: number;
 };
@@ -31,7 +31,7 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<FavoriteItem[]>([]);
 
-  const isFavorite = (id: number) => items.some((item) => item.id === id);
+  const isFavorite = (id: string) => items.some((item) => item.id === id);
 
   const toggleFavorite = (item: FavoriteItem) => {
     setItems((prev) => {
@@ -43,7 +43,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeFavorite = (id: number) => {
+  const removeFavorite = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 

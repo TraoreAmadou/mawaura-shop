@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "../cart-context";
 import { useFavorites } from "../favorites-context";
 
@@ -12,6 +13,7 @@ type ShopProduct = {
   category?: string | null;
   price: number; // en euros
   isFeatured?: boolean;
+  imageUrl?: string | null; // ✅ nouvelle propriété
 };
 
 // ✅ Petit composant de notification panier
@@ -33,7 +35,7 @@ function CartNotification() {
 }
 
 export default function BoutiquePage() {
-  const { addItem } = useCart(); // ✅ comme dans l’ancienne version
+  const { addItem } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -181,11 +183,23 @@ export default function BoutiquePage() {
                   key={product.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* visuel simplifié (en attendant les vraies images) */}
-                  <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                      Mawaura
-                    </span>
+                  {/* ✅ Image produit */}
+                  <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative">
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 768px) 33vw, 50vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                          Mawaura
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
@@ -229,7 +243,7 @@ export default function BoutiquePage() {
                             price: product.price,
                           })
                         }
-                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg:white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
                       >
                         Ajouter au panier
                       </button>

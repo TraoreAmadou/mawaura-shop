@@ -13,7 +13,9 @@ type HomeProduct = {
   price: number;
   category?: string | null;
   isFeatured?: boolean;
+  imageUrl?: string | null; // ✅ même structure que /api/products
 };
+
 
 // ✅ Petit toast global pour le panier
 function CartNotification() {
@@ -110,12 +112,6 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
-              <Link
-                href="/boutique"
-                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
-              >
-                Accéder à la boutique complète
-              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -287,21 +283,21 @@ export default function Home() {
 
             <div className="rounded-2xl border border-yellow-100 bg-white/90 px-4 sm:px-5 py-4 mb-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 group-hover:shadow-lg">
               <p className="text-sm sm:text-base text-zinc-700 italic">
-                « Nos bijoux ne crient pas pour être vus. Ils révèlent simplement la
-                lumière qui est déjà en vous. »
+                « Nos bijoux ne crient pas pour être vus. Ils révèlent
+                simplement la lumière qui est déjà en vous. »
               </p>
             </div>
 
             <p className="text-sm sm:text-base text-zinc-700 leading-relaxed mb-3">
               Mawaura Accessories est né de l&apos;envie de créer des bijoux qui
-              parlent de vous avant même que vous ne disiez un mot. Inspiré par Mawa,
-              chaque détail est pensé pour refléter une féminité lumineuse, délicate,
-              mais sûre d&apos;elle.
+              parlent de vous avant même que vous ne disiez un mot. Inspiré par
+              Mawa, chaque détail est pensé pour refléter une féminité
+              lumineuse, délicate, mais sûre d&apos;elle.
             </p>
             <p className="text-sm sm:text-base text-zinc-600 leading-relaxed">
-              Nos pièces sont imaginées pour s&apos;intégrer à votre vie quotidienne :
-              un café entre amies, une présentation importante, un dîner improvisé.
-              Toujours là, jamais de trop.
+              Nos pièces sont imaginées pour s&apos;intégrer à votre vie
+              quotidienne : un café entre amies, une présentation importante,
+              un dîner improvisé. Toujours là, jamais de trop.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2 text-[11px] sm:text-xs">
@@ -321,33 +317,36 @@ export default function Home() {
           <div className="space-y-4 text-sm sm:text-base">
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">①</span> Pensé comme une signature
+                <span className="text-yellow-500">①</span> Pensé comme une
+                signature
               </h3>
               <p className="text-zinc-600">
-                Chaque pièce Mawaura est conçue pour s&apos;accorder à votre style
-                naturel, pas pour le remplacer. Vous restez le centre, le bijou
-                souligne votre présence.
+                Chaque pièce Mawaura est conçue pour s&apos;accorder à votre
+                style naturel, pas pour le remplacer. Vous restez le centre, le
+                bijou souligne votre présence.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">②</span> Confort & légèreté
               </h3>
               <p className="text-zinc-600">
                 Des pièces pensées pour être portées du matin au soir : légères,
-                agréables sur la peau, faciles à associer à vos tenues du quotidien.
+                agréables sur la peau, faciles à associer à vos tenues du
+                quotidien.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">③</span> Une vision à long terme
+                <span className="text-yellow-500">③</span> Une vision à long
+                terme
               </h3>
               <p className="text-zinc-600">
-                Notre objectif : construire un e-shop de référence pour des bijoux
-                accessibles, élégants et durables, avec une expérience en ligne simple
-                et soignée.
+                Notre objectif : construire un e-shop de référence pour des
+                bijoux accessibles, élégants et durables, avec une expérience en
+                ligne simple et soignée.
               </p>
             </div>
           </div>

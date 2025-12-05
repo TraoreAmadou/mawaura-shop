@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useFavorites } from "../favorites-context";
+import { useFavorites, FavoriteItem } from "../favorites-context";
 import { useCart } from "../cart-context";
 
 // ✅ Toast réutilisable
@@ -27,13 +27,8 @@ export default function FavorisPage() {
   const { items, removeFavorite, clearFavorites } = useFavorites();
   const { addItem } = useCart();
 
-  const formatPrice = (price: any) => {
-    if (typeof price === "number") {
-      return `${price.toFixed(2).replace(".", ",")} €`;
-    }
-    // ancien format string "29,90 €"
-    return price;
-  };
+  const formatPrice = (price: number) =>
+    `${price.toFixed(2).replace(".", ",")} €`;
 
   const hasItems = items.length > 0;
 
@@ -103,7 +98,7 @@ export default function FavorisPage() {
 
             {/* Grille style Boutique */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
-              {items.map((item: any) => (
+              {items.map((item: FavoriteItem) => (
                 <article
                   key={item.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"

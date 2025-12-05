@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
+
+export const runtime = "nodejs"; // ✅ pour pouvoir utiliser fs
 
 async function requireAdmin(req: NextRequest) {
   const token = await getToken({
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(products);
 }
 
-// POST /api/admin/products → créer un produit
+// POST /api/admin/products → créer un produit (avec upload images)
 export async function POST(req: NextRequest) {
   const token = await requireAdmin(req);
   if (!token) {
@@ -36,17 +41,26 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const { name, price, category, description, isFeatured } = body;
+    const formData = await req.formData();
 
-    if (!name || !price) {
+    const name = String(formData.get("name") || "").trim();
+    const priceRaw = String(formData.get("price") || "").trim();
+    const category = String(formData.get("category") || "").trim() || null;
+    const description =
+      String(formData.get("description") || "").trim() || null;
+
+    const isFeaturedRaw = formData.get("isFeatured");
+    const isFeatured =
+      isFeaturedRaw === "on" || isFeaturedRaw === "true" || isFeaturedRaw === "1";
+
+    if (!name || !priceRaw) {
       return NextResponse.json(
         { error: "Nom et prix sont obligatoires." },
         { status: 400 }
       );
     }
 
-    const priceNumber = Number(price);
+    const priceNumber = Number(priceRaw);
     if (Number.isNaN(priceNumber) || priceNumber <= 0) {
       return NextResponse.json(
         { error: "Le prix doit être un nombre positif." },
@@ -63,14 +77,52 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
+    // ✅ gestion des fichiers images
+    const files = formData.getAll("images") as File[];
+
+    // on limite à 5 fichiers max
+    const selectedFiles = files.slice(0, 5);
+
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "products");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const savedImageUrls: string[] = [];
+
+    for (const file of selectedFiles) {
+      if (!file || typeof file.arrayBuffer !== "function") continue;
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const ext = path.extname(file.name) || ".jpg";
+
+      const randomName = crypto.randomBytes(16).toString("hex");
+      const fileName = `${Date.now()}-${randomName}${ext}`;
+
+      const filePath = path.join(uploadDir, fileName);
+      await fs.writeFile(filePath, buffer);
+
+      // chemin relatif pour Next/Image et le front
+      const relativeUrl = `/uploads/products/${fileName}`;
+      savedImageUrls.push(relativeUrl);
+    }
+
     const product = await prisma.product.create({
       data: {
         name,
         slug,
-        description: description || null,
+        description,
         priceCents,
-        category: category || null,
-        isFeatured: Boolean(isFeatured),
+        category,
+        isFeatured,
+        mainImageUrl: savedImageUrls[0] || null,
+        images:
+          savedImageUrls.length > 0
+            ? {
+                create: savedImageUrls.map((url, index) => ({
+                  url,
+                  position: index,
+                })),
+              }
+            : undefined,
       },
     });
 
