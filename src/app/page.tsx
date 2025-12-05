@@ -44,7 +44,7 @@ function getStockStatus(p: HomeProduct | null): StockStatus | null {
     return { label: "Bientôt de retour", variant: "warning" };
   }
 
-  // dernier exemplaires
+  // derniers exemplaires
   if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
     return { label: "Derniers exemplaires", variant: "warning" };
   }
@@ -148,12 +148,6 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
-              <Link
-                href="/boutique"
-                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
-              >
-                Accéder à la boutique complète
-              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -207,6 +201,17 @@ export default function Home() {
                   const favorite = isFavorite(product.id);
                   const stockStatus = getStockStatus(product);
 
+                  // 🎯 même logique que Boutique / Favoris
+                  const isUnavailable = !product.isActive;
+                  const isOutOfStock = !isUnavailable && product.stock <= 0;
+                  const isLowStock =
+                    !isUnavailable &&
+                    product.stock > 0 &&
+                    product.lowStockThreshold > 0 &&
+                    product.stock <= product.lowStockThreshold;
+
+                  const disableAddToCart = isUnavailable || isOutOfStock;
+
                   let stockClass = "";
                   if (stockStatus) {
                     stockClass =
@@ -238,7 +243,10 @@ export default function Home() {
                     });
                   }
 
-                  if (stockStatus && stockStatus.label !== "En stock") {
+                  if (
+                    stockStatus &&
+                    stockStatus.label !== "En stock"
+                  ) {
                     allBadges.push({
                       key: "stock",
                       label: stockStatus.label,
@@ -255,9 +263,9 @@ export default function Home() {
                     });
                   }
 
-                  // 🔹 Top badges : max 2 (priorité : New, Best-seller, Stock, Tag)
+                  // 🔹 Top badges : max 2 (priorité selon l’ordre d’insertion)
                   const topBadges = allBadges.slice(0, 2);
-                  // 🔹 Badges du bas = le reste + PHARE (toujours en bas)
+                  // 🔹 Badges du bas = le reste + PHARE (toujours en bas si isFeatured)
                   const bottomBadges: Badge[] = [
                     ...allBadges.slice(2),
                     ...(product.isFeatured
@@ -273,6 +281,7 @@ export default function Home() {
                   ];
 
                   const href = `/boutique/${product.slug}`;
+                  const displayImageUrl = product.mainImageUrl ?? null;
 
                   return (
                     <article
@@ -284,9 +293,9 @@ export default function Home() {
                         href={href}
                         className="relative block aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 overflow-hidden"
                       >
-                        {product.mainImageUrl ? (
+                        {displayImageUrl ? (
                           <img
-                            src={product.mainImageUrl}
+                            src={displayImageUrl}
                             alt={product.name}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
@@ -348,10 +357,30 @@ export default function Home() {
                           </div>
                         )}
 
-                        <div className="mt-1 flex items-center justify-between">
+                        <div className="mt-1">
                           <p className="text-sm font-semibold text-zinc-900">
                             {product.price.toFixed(2).replace(".", ",")} €
                           </p>
+
+                          {/* 🧡 Messages de stock comme sur la boutique */}
+                          {isUnavailable && (
+                            <p className="mt-1 text-[11px] text-red-600">
+                              Indisponible pour le moment
+                            </p>
+                          )}
+
+                          {!isUnavailable && isOutOfStock && (
+                            <p className="mt-1 text-[11px] text-amber-600">
+                              Bientôt de retour
+                            </p>
+                          )}
+
+                          {!isUnavailable && isLowStock && (
+                            <p className="mt-1 text-[11px] text-amber-600">
+                              Derniers exemplaires ({product.stock} restant
+                              {product.stock > 1 ? "s" : ""})
+                            </p>
+                          )}
                         </div>
 
                         <div className="mt-3 flex items-center justify-between gap-2">
@@ -362,11 +391,15 @@ export default function Home() {
                                 id: product.id,
                                 name: product.name,
                                 price: product.price,
+                                imageUrl: displayImageUrl,
                               })
                             }
-                            className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+                            disabled={disableAddToCart}
+                            className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Ajouter au panier
+                            {disableAddToCart
+                              ? "Indisponible"
+                              : "Ajouter au panier"}
                           </button>
                           <button
                             type="button"
@@ -376,6 +409,7 @@ export default function Home() {
                                 name: product.name,
                                 price: product.price,
                                 category: product.category ?? undefined,
+                                imageUrl: displayImageUrl,
                               })
                             }
                             className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
@@ -475,7 +509,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">②</span> Confort & légèreté
               </h3>
@@ -486,7 +520,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">③</span> Une vision à long terme
               </h3>

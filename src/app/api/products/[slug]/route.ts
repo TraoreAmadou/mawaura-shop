@@ -1,19 +1,24 @@
-// src/app/api/products/[slug]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+type Params =
+  | { params: { slug: string } }
+  | { params: Promise<{ slug: string }> };
+
+// GET /api/products/[slug]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> } // 👈 params est une Promise
+  context: Params
 ) {
-  // ✅ on attend params avant de l'utiliser
-  const { slug } = await params;
+  // ✅ compat Next 15 : params peut être un Promise
+  const { slug } = await Promise.resolve(
+    (context as any).params
+  );
 
   try {
     const product = await prisma.product.findUnique({
       where: { slug },
       include: {
-        // ⚠️ seulement si tu as bien ajouté le modèle ProductImage + relation dans schema.prisma
         images: {
           orderBy: { position: "asc" },
         },
@@ -35,7 +40,13 @@ export async function GET(
       category: product.category,
       price: product.priceCents / 100,
       isFeatured: product.isFeatured,
-      imageUrl: product.mainImageUrl,
+      isNew: product.isNew,
+      isBestSeller: product.isBestSeller,
+      tag: product.tag,
+      mainImageUrl: product.mainImageUrl,
+      stock: product.stock,
+      lowStockThreshold: product.lowStockThreshold,
+      isActive: product.isActive,
       images: product.images.map((img) => ({
         id: img.id,
         url: img.url,
@@ -45,7 +56,7 @@ export async function GET(
 
     return NextResponse.json(formatted);
   } catch (error) {
-    console.error("Erreur chargement produit:", error);
+    console.error("Erreur chargement produit détail:", error);
     return NextResponse.json(
       { error: "Erreur lors du chargement du produit." },
       { status: 500 }

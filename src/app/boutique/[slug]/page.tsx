@@ -21,7 +21,15 @@ type ProductDetail = {
   category?: string | null;
   price: number;
   isFeatured?: boolean;
-  imageUrl?: string | null;
+  // nouveaux champs (tous optionnels pour être compatibles)
+  isNew?: boolean;
+  isBestSeller?: boolean;
+  tag?: string | null;
+  mainImageUrl?: string | null;
+  imageUrl?: string | null; // compat ancien champ
+  stock?: number | null;
+  lowStockThreshold?: number | null;
+  isActive?: boolean | null;
   images: ProductImage[];
 };
 
@@ -67,8 +75,9 @@ export default function ProductDetailPage() {
     if (product.images && product.images.length > 0) {
       return product.images;
     }
-    if (product.imageUrl) {
-      return [{ id: "main", url: product.imageUrl, position: 0 }];
+    const fallback = product.mainImageUrl || product.imageUrl;
+    if (fallback) {
+      return [{ id: "main", url: fallback, position: 0 }];
     }
     return [];
   }, [product]);
@@ -128,7 +137,36 @@ export default function ProductDetailPage() {
 
   const favorite = isFavorite(product.id);
   const displayImageUrl =
-    product.imageUrl || imagesForDisplay[0]?.url || undefined;
+    product.mainImageUrl ||
+    product.imageUrl ||
+    imagesForDisplay[0]?.url ||
+    undefined;
+
+  // ✅ Gestion propre de la disponibilité & du stock
+
+  // Indisponible seulement si isActive === false (si undefined => on considère comme disponible)
+  const isUnavailable = product.isActive === false;
+
+  const stock =
+    typeof product.stock === "number" ? product.stock : null;
+  const lowStockThreshold =
+    typeof product.lowStockThreshold === "number"
+      ? product.lowStockThreshold
+      : null;
+
+  // Rupture de stock uniquement si on a une info de stock ET que stock === 0
+  const isOutOfStock =
+    !isUnavailable && stock !== null && stock === 0;
+
+  // Derniers exemplaires uniquement si stock et seuil sont définis
+  const isLowStock =
+    !isUnavailable &&
+    stock !== null &&
+    lowStockThreshold !== null &&
+    stock > 0 &&
+    stock <= lowStockThreshold;
+
+  const disableAddToCart = isUnavailable || isOutOfStock;
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
@@ -166,7 +204,6 @@ export default function ProductDetailPage() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 grid gap-10 md:grid-cols-[1.2fr,0.8fr] items-start">
         {/* Colonne gauche : carrousel */}
         <div className="space-y-4">
-          {/* ✅ Image un peu plus grande : max-w-lg puis lg:max-w-xl */}
           <div className="relative w-full max-w-lg lg:max-w-xl mx-auto aspect-[3/4]">
             {imagesForDisplay.length > 0 ? (
               <>
@@ -184,7 +221,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={handlePrev}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg-white"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg:white"
                       aria-label="Image précédente"
                     >
                       ‹
@@ -192,7 +229,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg:white"
                       aria-label="Image suivante"
                     >
                       ›
@@ -244,9 +281,31 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-            {product.name}
-          </h1>
+          {/* Titre + gros badges (Nouveau / Best-seller) */}
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+              {product.name}
+            </h1>
+            <div className="flex flex-wrap gap-2">
+              {product.isNew && (
+                <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-3 py-1.5 text-[11px] uppercase tracking-[0.22em]">
+                  Nouveau
+                </span>
+              )}
+              {product.isBestSeller && (
+                <span className="inline-flex items-center rounded-full bg:white text-zinc-900 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] border border-zinc-300">
+                  Best-seller
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Tag éventuel sous le titre */}
+          {product.tag && (
+            <p className="text-xs sm:text-sm text-zinc-500">
+              {product.tag}
+            </p>
+          )}
 
           {product.isFeatured && (
             <p className="text-xs sm:text-sm text-yellow-600">
@@ -254,9 +313,31 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <p className="text-lg sm:text-xl font-semibold text-zinc-900">
-            {product.price.toFixed(2).replace(".", ",")} €
-          </p>
+          {/* Prix + messages de stock */}
+          <div className="space-y-1">
+            <p className="text-lg sm:text-xl font-semibold text-zinc-900">
+              {product.price.toFixed(2).replace(".", ",")} €
+            </p>
+
+            {isUnavailable && (
+              <p className="text-xs sm:text-sm text-red-600 font-medium">
+                Indisponible pour le moment.
+              </p>
+            )}
+
+            {!isUnavailable && isOutOfStock && (
+              <p className="text-xs sm:text-sm text-amber-600 font-medium">
+                Bientôt de retour.
+              </p>
+            )}
+
+            {!isUnavailable && isLowStock && stock !== null && (
+              <p className="text-xs sm:text-sm text-amber-600 font-medium">
+                Derniers exemplaires ({stock} restant
+                {stock > 1 ? "s" : ""}).
+              </p>
+            )}
+          </div>
 
           {product.description && (
             <p className="text-sm sm:text-base text-zinc-600 leading-relaxed">
@@ -275,9 +356,10 @@ export default function ProductDetailPage() {
                   imageUrl: displayImageUrl ?? null,
                 })
               }
-              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
+              disabled={disableAddToCart}
+              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white hover:bg:white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Ajouter au panier
+              {disableAddToCart ? "Indisponible" : "Ajouter au panier"}
             </button>
             <button
               type="button"
