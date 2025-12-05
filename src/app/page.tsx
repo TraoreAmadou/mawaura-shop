@@ -14,8 +14,44 @@ type HomeProduct = {
   price: number;
   category?: string | null;
   isFeatured?: boolean;
-  imageUrl?: string | null;
+  isNew?: boolean;
+  isBestSeller?: boolean;
+  tag?: string | null;
+  mainImageUrl?: string | null;
+  stock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
 };
+
+type StockStatus =
+  | { label: "En stock"; variant: "ok" }
+  | { label: "Derniers exemplaires"; variant: "warning" }
+  | { label: "Bientôt de retour"; variant: "warning" }
+  | { label: "Indisponible"; variant: "danger" };
+
+type Badge = { key: string; label: string; className: string };
+
+function getStockStatus(p: HomeProduct | null): StockStatus | null {
+  if (!p) return null;
+
+  // produit désactivé
+  if (!p.isActive) {
+    return { label: "Indisponible", variant: "danger" };
+  }
+
+  // plus de stock
+  if (p.stock <= 0) {
+    return { label: "Bientôt de retour", variant: "warning" };
+  }
+
+  // dernier exemplaires
+  if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
+    return { label: "Derniers exemplaires", variant: "warning" };
+  }
+
+  // "En stock" existe pour la logique, mais on ne l'affiche pas forcément
+  return { label: "En stock", variant: "ok" };
+}
 
 // ✅ Petit toast global pour le panier
 function CartNotification() {
@@ -72,7 +108,7 @@ export default function Home() {
     <main className="min-h-screen bg-white text-zinc-900">
       {/* HERO + PIÈCES PHARES AVEC LA MÊME IMAGE DE FOND */}
       <section className="relative">
-        {/* Image de fond */}
+        {/* Image de fond sur toute la hauteur de la section */}
         <div className="absolute inset-0">
           <Image
             src="/mawaura-hero.jpg"
@@ -84,10 +120,10 @@ export default function Home() {
           />
         </div>
 
-        {/* Overlay */}
+        {/* Overlay (voile) pour garder le texte lisible sur le hero */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/80 to-white/70" />
 
-        {/* Contenu */}
+        {/* Contenu (hero + pièces phares) */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 sm:pt-20 sm:pb-20">
           {/* HERO */}
           <div className="max-w-xl py-8 sm:py-10">
@@ -104,7 +140,8 @@ export default function Home() {
               personnelle, pour briller sans en faire trop.
             </p>
 
-            <div className="mt-8 flex flex-wrap.items-center gap-4">
+            {/* Boutons hero */}
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="#collection"
                 className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
@@ -124,7 +161,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* SECTION PIÈCES PHARES */}
+          {/* SECTION PIÈCES PHARES (toujours sur la même image de fond) */}
           <section id="collection" className="mt-10 sm:mt-14">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4 sm:mb-6">
               <div>
@@ -168,108 +205,195 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
                 {featuredProducts.map((product) => {
                   const favorite = isFavorite(product.id);
+                  const stockStatus = getStockStatus(product);
+
+                  let stockClass = "";
+                  if (stockStatus) {
+                    stockClass =
+                      stockStatus.variant === "ok"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : stockStatus.variant === "warning"
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-red-200 bg-red-50 text-red-700";
+                  }
+
+                  // 🔹 Construire la liste de tous les badges possibles
+                  const allBadges: Badge[] = [];
+
+                  if (product.isNew) {
+                    allBadges.push({
+                      key: "new",
+                      label: "Nouveau",
+                      className:
+                        "inline-flex items-center rounded-full bg-zinc-900 text-white px-2.5 py-1 text-[9px] uppercase tracking-[0.18em]",
+                    });
+                  }
+
+                  if (product.isBestSeller) {
+                    allBadges.push({
+                      key: "best",
+                      label: "Best-seller",
+                      className:
+                        "inline-flex items-center rounded-full bg-white text-zinc-900 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                    });
+                  }
+
+                  if (stockStatus && stockStatus.label !== "En stock") {
+                    allBadges.push({
+                      key: "stock",
+                      label: stockStatus.label,
+                      className: `inline-flex items-center rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] ${stockClass}`,
+                    });
+                  }
+
+                  if (product.tag) {
+                    allBadges.push({
+                      key: "tag",
+                      label: product.tag,
+                      className:
+                        "inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                    });
+                  }
+
+                  // 🔹 Top badges : max 2 (priorité : New, Best-seller, Stock, Tag)
+                  const topBadges = allBadges.slice(0, 2);
+                  // 🔹 Badges du bas = le reste + PHARE (toujours en bas)
+                  const bottomBadges: Badge[] = [
+                    ...allBadges.slice(2),
+                    ...(product.isFeatured
+                      ? [
+                          {
+                            key: "featured",
+                            label: "Phare",
+                            className:
+                              "inline-flex items-center rounded-full bg-yellow-500 text-white px-2.5 py-1 text-[9px] uppercase tracking-[0.18em]",
+                          } as Badge,
+                        ]
+                      : []),
+                  ];
+
+                  const href = `/boutique/${product.slug}`;
 
                   return (
                     <article
                       key={product.id}
                       className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                     >
-                      {/* Zone cliquable → page produit */}
+                      {/* Visuel avec image + badges top */}
                       <Link
-                        href={`/boutique/${product.slug}`}
-                        className="flex-1 flex flex-col"
+                        href={href}
+                        className="relative block aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 overflow-hidden"
                       >
-                        <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center relative">
-                          {product.imageUrl ? (
-                            <Image
-                              src={product.imageUrl}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                              sizes="(min-width: 768px) 33vw, 50vw"
-                            />
-                          ) : (
+                        {product.mainImageUrl ? (
+                          <img
+                            src={product.mainImageUrl}
+                            alt={product.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
                             <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                               Mawaura
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
-                        <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              {product.category && (
-                                <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mb-1">
-                                  {product.category}
-                                </p>
-                              )}
-                              <h3 className="text-sm font-medium text-zinc-900 line-clamp-2">
-                                {product.name}
-                              </h3>
-                            </div>
-                            <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
-                              Phare
+                        {/* ✅ badges principaux : gauche & droite */}
+                        {topBadges[0] && (
+                          <div className="absolute top-2 left-2">
+                            <span className={topBadges[0].className}>
+                              {topBadges[0].label}
                             </span>
                           </div>
-
-                          {product.description && (
-                            <p className="text-[11px] text-zinc-500 line-clamp-2">
-                              {product.description}
-                            </p>
-                          )}
-
-                          <div className="mt-1 flex items-center justify-between">
-                            <p className="text-sm font-semibold text-zinc-900">
-                              {product.price.toFixed(2).replace(".", ",")} €
-                            </p>
+                        )}
+                        {topBadges[1] && (
+                          <div className="absolute top-2 right-2">
+                            <span className={topBadges[1].className}>
+                              {topBadges[1].label}
+                            </span>
                           </div>
-                        </div>
+                        )}
                       </Link>
 
-                      {/* Boutons */}
-                      <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-1 flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            addItem({
-                              id: product.id,
-                              name: product.name,
-                              price: product.price,
-                              slug: product.slug,
-                              imageUrl: product.imageUrl ?? null,
-                            })
-                          }
-                          className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
-                        >
-                          Ajouter au panier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleFavorite({
-                              id: product.id,
-                              slug: product.slug,
-                              name: product.name,
-                              price: product.price,
-                              category: product.category ?? null,
-                              imageUrl: product.imageUrl ?? null,
-                            })
-                          }
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
-                          aria-label={
-                            favorite
-                              ? "Retirer des favoris"
-                              : "Ajouter aux favoris"
-                          }
-                        >
-                          <span
-                            className={`text-sm ${
-                              favorite ? "text-red-500" : "text-zinc-500"
-                            }`}
+                      <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            {product.category && (
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mb-1">
+                                {product.category}
+                              </p>
+                            )}
+                            <Link href={href}>
+                              <h3 className="text-sm font-medium text-zinc-900 line-clamp-2 hover:underline">
+                                {product.name}
+                              </h3>
+                            </Link>
+                          </div>
+                        </div>
+
+                        {product.description && (
+                          <p className="text-[11px] text-zinc-500 line-clamp-2">
+                            {product.description}
+                          </p>
+                        )}
+
+                        {/* Badges du bas, incluant toujours PHARE si isFeatured */}
+                        {bottomBadges.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {bottomBadges.map((badge) => (
+                              <span key={badge.key} className={badge.className}>
+                                {badge.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-1 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-zinc-900">
+                            {product.price.toFixed(2).replace(".", ",")} €
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addItem({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                              })
+                            }
+                            className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
                           >
-                            {favorite ? "♥" : "♡"}
-                          </span>
-                        </button>
+                            Ajouter au panier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleFavorite({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                category: product.category ?? undefined,
+                              })
+                            }
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+                            aria-label={
+                              favorite
+                                ? "Retirer des favoris"
+                                : "Ajouter aux favoris"
+                            }
+                          >
+                            <span
+                              className={`text-sm ${
+                                favorite ? "text-red-500" : "text-zinc-500"
+                              }`}
+                            >
+                              {favorite ? "♥" : "♡"}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </article>
                   );
@@ -279,8 +403,6 @@ export default function Home() {
           </section>
         </div>
       </section>
-
-
 
       {/* Section univers de marque avec image de fond + effets dynamiques */}
       <section className="relative border-t border-zinc-200 overflow-hidden">
@@ -344,8 +466,7 @@ export default function Home() {
           <div className="space-y-4 text-sm sm:text-base">
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">①</span> Pensé comme une
-                signature
+                <span className="text-yellow-500">①</span> Pensé comme une signature
               </h3>
               <p className="text-zinc-600">
                 Chaque pièce Mawaura est conçue pour s&apos;accorder à votre
@@ -354,21 +475,20 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
                 <span className="text-yellow-500">②</span> Confort & légèreté
               </h3>
               <p className="text-zinc-600">
-                Des pièces pensées pour être portées du matin au soir : légères,
-                agréables sur la peau, faciles à associer à vos tenues du
-                quotidien.
+                Des pièces pensées pour être portées du matin au soir :
+                légères, agréables sur la peau, faciles à associer à vos tenues
+                du quotidien.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
+            <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all durée-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">③</span> Une vision à long
-                terme
+                <span className="text-yellow-500">③</span> Une vision à long terme
               </h3>
               <p className="text-zinc-600">
                 Notre objectif : construire un e-shop de référence pour des
