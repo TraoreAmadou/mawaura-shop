@@ -73,12 +73,21 @@ model Product {
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  // 🔹 Tags / badges
   isNew        Boolean         @default(false)
   isBestSeller Boolean         @default(false)
   tag          String?
-  mainImageUrl String?         // ✅ image principale
-  images       ProductImage[]  // ✅ jusqu’à 5 images via la logique côté admin
+
+  // 🔹 Images
+  mainImageUrl String?         // image principale
+  images       ProductImage[]  // jusqu’à 5 images associées
+
+  // 🔹 Stock
+  stock             Int        @default(0)   // quantité disponible
+  lowStockThreshold Int        @default(3)   // seuil pour “Derniers exemplaires”
 }
+
 
 model ProductImage {
   id        String   @id @default(cuid())

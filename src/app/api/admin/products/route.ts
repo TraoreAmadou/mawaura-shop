@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
+import { promises as fs } from "fs";
 import path from "path";
-import crypto from "crypto";
-
-export const runtime = "nodejs"; // ✅ pour pouvoir utiliser fs
 
 async function requireAdmin(req: NextRequest) {
   const token = await getToken({
@@ -33,7 +30,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(products);
 }
 
-// POST /api/admin/products → créer un produit (avec upload images)
+// POST /api/admin/products → créer un produit (FormData + images)
 export async function POST(req: NextRequest) {
   const token = await requireAdmin(req);
   if (!token) {
@@ -43,33 +40,41 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
-    const name = String(formData.get("name") || "").trim();
-    const priceRaw = String(formData.get("price") || "").trim();
-    const category = String(formData.get("category") || "").trim() || null;
-    const description =
-      String(formData.get("description") || "").trim() || null;
+    const name = formData.get("name")?.toString().trim();
+    const priceStr = formData.get("price")?.toString();
+    const category = formData.get("category")?.toString().trim() || "";
+    const description = formData.get("description")?.toString().trim() || "";
+    const tag = formData.get("tag")?.toString().trim() || "";
 
-    const isFeaturedRaw = formData.get("isFeatured");
-    const isFeatured =
-      isFeaturedRaw === "on" || isFeaturedRaw === "true" || isFeaturedRaw === "1";
+    const stockStr = formData.get("stock")?.toString() ?? "0";
+    const lowStockThresholdStr =
+      formData.get("lowStockThreshold")?.toString() ?? "0";
 
-    if (!name || !priceRaw) {
+    const isFeatured = formData.get("isFeatured") === "true";
+    const isNew = formData.get("isNew") === "true";
+    const isBestSeller = formData.get("isBestSeller") === "true";
+    const isActive = formData.get("isActive") === "true";
+
+    if (!name || !priceStr) {
       return NextResponse.json(
         { error: "Nom et prix sont obligatoires." },
         { status: 400 }
       );
     }
 
-    const priceNumber = Number(priceRaw);
+    const priceNumber = Number(priceStr);
     if (Number.isNaN(priceNumber) || priceNumber <= 0) {
       return NextResponse.json(
         { error: "Le prix doit être un nombre positif." },
         { status: 400 }
       );
     }
-
     const priceCents = Math.round(priceNumber * 100);
 
+    const stock = Number.parseInt(stockStr, 10);
+    const lowStockThreshold = Number.parseInt(lowStockThresholdStr, 10);
+
+    // Génération du slug
     const slug = name
       .toLowerCase()
       .normalize("NFD")
@@ -77,47 +82,56 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
-    // ✅ gestion des fichiers images
-    const files = formData.getAll("images") as File[];
-
-    // on limite à 5 fichiers max
-    const selectedFiles = files.slice(0, 5);
+    // Gestion des images (max 5)
+    const images = formData.getAll("images") as File[];
+    const validImages = images.filter(
+      (f) => f instanceof File && (f as File).size > 0
+    ) as File[];
 
     const uploadDir = path.join(process.cwd(), "public", "uploads", "products");
     await fs.mkdir(uploadDir, { recursive: true });
 
-    const savedImageUrls: string[] = [];
+    const imageUrls: string[] = [];
 
-    for (const file of selectedFiles) {
-      if (!file || typeof file.arrayBuffer !== "function") continue;
+    for (const [index, file] of validImages.slice(0, 5).entries()) {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const ext = path.extname(file.name) || ".jpg";
-
-      const randomName = crypto.randomBytes(16).toString("hex");
-      const fileName = `${Date.now()}-${randomName}${ext}`;
-
+      const safeName = file.name.replace(/\s+/g, "-");
+      const fileName = `${Date.now()}-${index}-${Math.round(
+        Math.random() * 1_000_000
+      )}-${safeName}`;
       const filePath = path.join(uploadDir, fileName);
+
       await fs.writeFile(filePath, buffer);
 
-      // chemin relatif pour Next/Image et le front
       const relativeUrl = `/uploads/products/${fileName}`;
-      savedImageUrls.push(relativeUrl);
+      imageUrls.push(relativeUrl);
     }
+
+    const mainImageUrl = imageUrls[0] ?? null;
 
     const product = await prisma.product.create({
       data: {
         name,
         slug,
-        description,
+        description: description || null,
         priceCents,
-        category,
+        category: category || null,
         isFeatured,
-        mainImageUrl: savedImageUrls[0] || null,
+        isNew,
+        isBestSeller,
+        isActive,
+        tag: tag || null,
+        stock: Number.isNaN(stock) ? 0 : stock,
+        lowStockThreshold: Number.isNaN(lowStockThreshold)
+          ? 0
+          : lowStockThreshold,
+        mainImageUrl,
         images:
-          savedImageUrls.length > 0
+          imageUrls.length > 0
             ? {
-                create: savedImageUrls.map((url, index) => ({
+                create: imageUrls.map((url, index) => ({
                   url,
                   position: index,
                 })),

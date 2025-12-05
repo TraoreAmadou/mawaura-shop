@@ -13,8 +13,13 @@ type Product = {
   category: string | null;
   isFeatured: boolean;
   isActive: boolean;
-  createdAt: string;
+  isNew: boolean;
+  isBestSeller: boolean;
+  tag: string | null;
+  stock: number;
+  lowStockThreshold: number;
   mainImageUrl?: string | null;
+  createdAt: string;
 };
 
 export default function AdminPage() {
@@ -29,6 +34,12 @@ export default function AdminPage() {
     category: "",
     description: "",
     isFeatured: false,
+    isNew: false,
+    isBestSeller: false,
+    isActive: true,
+    tag: "",
+    stock: "",
+    lowStockThreshold: "3",
   });
   const [saving, setSaving] = useState(false);
 
@@ -74,8 +85,16 @@ export default function AdminPage() {
       const formEl = e.currentTarget;
       const formData = new FormData(formEl);
 
-      // on force la valeur booléenne dans le FormData
+      // ✅ booleans
       formData.set("isFeatured", form.isFeatured ? "true" : "false");
+      formData.set("isNew", form.isNew ? "true" : "false");
+      formData.set("isBestSeller", form.isBestSeller ? "true" : "false");
+      formData.set("isActive", form.isActive ? "true" : "false");
+
+      // ✅ nombres / textes
+      formData.set("stock", form.stock || "0");
+      formData.set("lowStockThreshold", form.lowStockThreshold || "0");
+      formData.set("tag", form.tag || "");
 
       const res = await fetch("/api/admin/products", {
         method: "POST",
@@ -96,6 +115,12 @@ export default function AdminPage() {
         category: "",
         description: "",
         isFeatured: false,
+        isNew: false,
+        isBestSeller: false,
+        isActive: true,
+        tag: "",
+        stock: "",
+        lowStockThreshold: "3",
       });
     } catch (err) {
       console.error(err);
@@ -121,6 +146,13 @@ export default function AdminPage() {
       console.error(err);
       alert("Erreur lors de la suppression.");
     }
+  };
+
+  const computeStatusLabel = (p: Product) => {
+    if (!p.isActive) return "Désactivé";
+    if (p.stock <= 0) return "Indisponible";
+    if (p.stock <= p.lowStockThreshold) return "Derniers exemplaires";
+    return "En stock";
   };
 
   if (status === "loading") {
@@ -253,7 +285,7 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* ✅ upload d’images (max 5) */}
+            {/* Images */}
             <div className="space-y-1.5 sm:col-span-2">
               <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
                 Images du bijou (jusqu&apos;à 5)
@@ -271,20 +303,104 @@ export default function AdminPage() {
               />
             </div>
 
-            <div className="flex items-center gap-2 sm:col-span-2">
+            {/* Stock */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
+                Stock disponible
+              </label>
               <input
-                id="isFeatured"
-                name="isFeatured"
-                type="checkbox"
-                checked={form.isFeatured}
+                name="stock"
+                type="number"
+                min="0"
+                value={form.stock}
                 onChange={handleChange}
-                className="h-4 w-4 rounded border-zinc-300 text-zinc-900"
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900"
+                placeholder="Ex : 10"
               />
-              <label
-                htmlFor="isFeatured"
-                className="text-xs sm:text-sm text-zinc-600"
-              >
-                Mettre en avant ce bijou (pièce phare / collection spéciale)
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
+                Seuil “Derniers exemplaires”
+              </label>
+              <input
+                name="lowStockThreshold"
+                type="number"
+                min="0"
+                value={form.lowStockThreshold}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900"
+                placeholder="Ex : 3"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Quand le stock est inférieur ou égal à ce seuil, le badge
+                “Derniers exemplaires” sera affiché.
+              </p>
+            </div>
+
+            {/* Tag libre */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
+                Tag personnalisé (optionnel)
+              </label>
+              <input
+                name="tag"
+                value={form.tag}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900"
+                placeholder='Ex : "Édition limitée", "Coup de cœur", etc.'
+              />
+              <p className="text-[11px] text-zinc-500">
+                Ce tag s’ajoute aux badges automatiques (stock, nouveau,
+                best-seller…). Le badge “Bientôt de retour” sera géré
+                automatiquement selon le stock.
+              </p>
+            </div>
+
+            {/* Flags */}
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  name="isFeatured"
+                  checked={form.isFeatured}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900"
+                />
+                <span>Mettre en avant ce bijou (pièce phare)</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  name="isNew"
+                  checked={form.isNew}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900"
+                />
+                <span>Marquer comme “Nouveau”</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  name="isBestSeller"
+                  checked={form.isBestSeller}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900"
+                />
+                <span>Marquer comme “Best-seller”</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={form.isActive}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900"
+                />
+                <span>Produit actif (affiché sur le site)</span>
               </label>
             </div>
 
@@ -327,7 +443,13 @@ export default function AdminPage() {
                       Catégorie
                     </th>
                     <th className="py-2 px-3 text-left hidden md:table-cell">
-                      Mise en avant
+                      Stock
+                    </th>
+                    <th className="py-2 px-3 text-left hidden md:table-cell">
+                      Statut
+                    </th>
+                    <th className="py-2 px-3 text-left hidden md:table-cell">
+                      Badges
                     </th>
                     <th className="py-2 pl-3 text-right">Actions</th>
                   </tr>
@@ -354,23 +476,52 @@ export default function AdminPage() {
                       <td className="py-2 px-3 text-zinc-600 hidden sm:table-cell">
                         {p.category || "—"}
                       </td>
+                      <td className="py-2 px-3 text-zinc-700 hidden md:table-cell">
+                        {p.stock}
+                      </td>
                       <td className="py-2 px-3 hidden md:table-cell">
-                        {p.isFeatured ? (
+                        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-700">
+                          {computeStatusLabel(p)}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 hidden md:table-cell space-x-1">
+                        {p.isFeatured && (
                           <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]">
-                            En avant
+                            Phare
                           </span>
-                        ) : (
-                          <span className="text-[11px] text-zinc-400">—</span>
+                        )}
+                        {p.isNew && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]">
+                            Nouveau
+                          </span>
+                        )}
+                        {p.isBestSeller && (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]">
+                            Best-seller
+                          </span>
+                        )}
+                        {p.tag && (
+                          <span className="inline-flex items-center rounded-full bg-zinc-100 text-zinc-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]">
+                            {p.tag}
+                          </span>
                         )}
                       </td>
                       <td className="py-2 pl-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p.id)}
-                          className="text-[11px] text-red-500 hover:text-red-600"
-                        >
-                          Supprimer
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/produits/${p.id}`}
+                            className="text-[11px] text-zinc-500 hover:text-zinc-900"
+                          >
+                            Éditer
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(p.id)}
+                            className="text-[11px] text-red-500 hover:text-red-600"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
