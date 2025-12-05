@@ -22,21 +22,28 @@ type ShopProduct = {
   isActive: boolean;
 };
 
+type StockStatus =
+  | { label: "En stock"; variant: "ok" }
+  | { label: "Derniers exemplaires"; variant: "warning" }
+  | { label: "Bientôt de retour"; variant: "warning" }
+  | { label: "Indisponible"; variant: "danger" };
+
 // Helper pour le status de stock
-function getStockStatus(p: ShopProduct) {
+function getStockStatus(p: ShopProduct): StockStatus {
   if (!p.isActive) {
-    return { label: "Indisponible", variant: "danger" as const };
+    return { label: "Indisponible", variant: "danger" };
   }
 
   if (p.stock <= 0) {
-    return { label: "Bientôt de retour", variant: "warning" as const };
+    return { label: "Bientôt de retour", variant: "warning" };
   }
 
   if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
-    return { label: "Derniers exemplaires", variant: "warning" as const };
+    return { label: "Derniers exemplaires", variant: "warning" };
   }
 
-  return { label: "En stock", variant: "ok" as const };
+  // "En stock" → on renvoie mais on ne l'affichera pas visuellement
+  return { label: "En stock", variant: "ok" };
 }
 
 // ✅ Petit composant de notification panier
@@ -209,17 +216,74 @@ export default function BoutiquePage() {
                   ? "border-amber-200 bg-amber-50 text-amber-700"
                   : "border-red-200 bg-red-50 text-red-700";
 
+              type Badge = { key: string; label: string; className: string };
+
+              // ✅ candidats pour le haut (max 2, jamais "Phare" ici)
+              const topCandidates: Badge[] = [];
+
+              if (product.isNew) {
+                topCandidates.push({
+                  key: "new",
+                  label: "Nouveau",
+                  className:
+                    "inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                });
+              }
+
+              if (product.isBestSeller) {
+                topCandidates.push({
+                  key: "best",
+                  label: "Best-seller",
+                  className:
+                    "inline-flex items-center rounded-full bg-white/90 text-zinc-900 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                });
+              }
+
+              if (stockStatus.label !== "En stock") {
+                topCandidates.push({
+                  key: "stock",
+                  label: stockStatus.label,
+                  className: `inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`,
+                });
+              }
+
+              if (product.tag) {
+                topCandidates.push({
+                  key: "tag",
+                  label: product.tag,
+                  className:
+                    "inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                });
+              }
+
+              const topBadges = topCandidates.slice(0, 2);
+
+              // ✅ "Phare" toujours en bas
+              const bottomBadges: Badge[] = [
+                ...topCandidates.slice(2),
+                ...(product.isFeatured
+                  ? [
+                      {
+                        key: "featured",
+                        label: "Phare",
+                        className:
+                          "inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                      } as Badge,
+                    ]
+                  : []),
+              ];
+
               return (
                 <article
                   key={product.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* visuel */}
+                  {/* visuel + badges principaux en haut */}
                   <Link
                     href={`/boutique/${product.slug}`}
                     className="block overflow-hidden"
                   >
-                    <div className="aspect-[3/4] bg-zinc-100 overflow-hidden">
+                    <div className="relative aspect-[3/4] bg-zinc-100 overflow-hidden">
                       {product.mainImageUrl ? (
                         <img
                           src={product.mainImageUrl}
@@ -230,6 +294,22 @@ export default function BoutiquePage() {
                         <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-zinc-100">
                           <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                             Mawaura
+                          </span>
+                        </div>
+                      )}
+
+                      {/* ✅ badges principaux en haut : gauche + droite */}
+                      {topBadges[0] && (
+                        <div className="absolute top-2 left-2">
+                          <span className={topBadges[0].className}>
+                            {topBadges[0].label}
+                          </span>
+                        </div>
+                      )}
+                      {topBadges[1] && (
+                        <div className="absolute top-2 right-2">
+                          <span className={topBadges[1].className}>
+                            {topBadges[1].label}
                           </span>
                         </div>
                       )}
@@ -251,39 +331,21 @@ export default function BoutiquePage() {
                         )}
                       </div>
 
-                      {/* Badges à droite */}
-                      <div className="flex flex-col items-end gap-1">
-                        {/* Badge stock */}
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`}
-                        >
-                          {stockStatus.label}
-                        </span>
-
-                        {/* Autres badges */}
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {product.isFeatured && (
-                            <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
-                              Phare
-                            </span>
-                          )}
-                          {product.isNew && (
-                            <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
-                              Nouveau
-                            </span>
-                          )}
-                          {product.isBestSeller && (
-                            <span className="inline-flex items-center rounded-full bg-zinc-100 text-zinc-800 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
-                              Best-seller
-                            </span>
-                          )}
-                          {product.tag && (
-                            <span className="inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200">
-                              {product.tag}
-                            </span>
-                          )}
+                      {/* Badges restants (dont PHARE) en bas à droite du header */}
+                      {bottomBadges.length > 0 && (
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {bottomBadges.map((badge) => (
+                              <span
+                                key={badge.key}
+                                className={badge.className}
+                              >
+                                {badge.label}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {product.description && (
@@ -306,7 +368,6 @@ export default function BoutiquePage() {
                             id: product.id,
                             name: product.name,
                             price: product.price,
-                            // si ton contexte panier accepte slug / image, tu peux les passer ici aussi
                           })
                         }
                         className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-60"

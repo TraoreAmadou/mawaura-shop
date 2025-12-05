@@ -11,6 +11,8 @@ type ApiProduct = {
   lowStockThreshold: number;
   isActive: boolean;
   mainImageUrl?: string | null;
+  isNew?: boolean;
+  isBestSeller?: boolean;
 };
 
 function getStockStatus(p?: ApiProduct | null) {
@@ -25,6 +27,7 @@ function getStockStatus(p?: ApiProduct | null) {
   if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
     return { label: "Derniers exemplaires", variant: "warning" as const };
   }
+  // En stock
   return { label: "En stock", variant: "ok" as const };
 }
 
@@ -166,11 +169,14 @@ export default function PanierPage() {
                               {item.name}
                             </h2>
                           </Link>
+
                           <p className="mt-1 text-[11px] text-zinc-500">
                             Prix unitaire :{" "}
                             {item.price.toFixed(2).replace(".", ",")} €
                           </p>
-                          {stockStatus && (
+
+                          {/* Badge stock (sauf "En stock") */}
+                          {stockStatus && stockStatus.label !== "En stock" && (
                             <p className="mt-1">
                               <span
                                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${stockClass}`}

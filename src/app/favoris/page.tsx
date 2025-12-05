@@ -18,19 +18,25 @@ type ApiProduct = {
   mainImageUrl?: string | null;
 };
 
-function getStockStatus(p?: ApiProduct | null) {
+type StockStatus =
+  | { label: "En stock"; variant: "ok" }
+  | { label: "Derniers exemplaires"; variant: "warning" }
+  | { label: "Bientôt de retour"; variant: "warning" }
+  | { label: "Indisponible"; variant: "danger" };
+
+function getStockStatus(p?: ApiProduct | null): StockStatus | null {
   if (!p) return null;
 
   if (!p.isActive) {
-    return { label: "Indisponible", variant: "danger" as const };
+    return { label: "Indisponible", variant: "danger" };
   }
   if (p.stock <= 0) {
-    return { label: "Bientôt de retour", variant: "warning" as const };
+    return { label: "Bientôt de retour", variant: "warning" };
   }
   if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
-    return { label: "Derniers exemplaires", variant: "warning" as const };
+    return { label: "Derniers exemplaires", variant: "warning" };
   }
-  return { label: "En stock", variant: "ok" as const };
+  return { label: "En stock", variant: "ok" };
 }
 
 // ✅ Toast réutilisable
@@ -167,10 +173,64 @@ export default function FavorisPage() {
                       : "border-red-200 bg-red-50 text-red-700";
                 }
 
-                // lien vers fiche produit si on a le slug
                 const href = product
                   ? `/boutique/${product.slug}`
                   : "/boutique";
+
+                type Badge = { key: string; label: string; className: string };
+
+                const topCandidates: Badge[] = [];
+
+                if (product?.isNew) {
+                  topCandidates.push({
+                    key: "new",
+                    label: "Nouveau",
+                    className:
+                      "inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                  });
+                }
+
+                if (product?.isBestSeller) {
+                  topCandidates.push({
+                    key: "best",
+                    label: "Best-seller",
+                    className:
+                      "inline-flex items-center rounded-full bg-white/90 text-zinc-900 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                  });
+                }
+
+                if (stockStatus && stockStatus.label !== "En stock") {
+                  topCandidates.push({
+                    key: "stock",
+                    label: stockStatus.label,
+                    className: `inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`,
+                  });
+                }
+
+                if (product?.tag) {
+                  topCandidates.push({
+                    key: "tag",
+                    label: product.tag,
+                    className:
+                      "inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                  });
+                }
+
+                const topBadges = topCandidates.slice(0, 2);
+
+                const bottomBadges: Badge[] = [
+                  ...topCandidates.slice(2),
+                  ...(product?.isFeatured
+                    ? [
+                        {
+                          key: "featured",
+                          label: "Phare",
+                          className:
+                            "inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                        } as Badge,
+                      ]
+                    : []),
+                ];
 
                 return (
                   <article
@@ -178,7 +238,7 @@ export default function FavorisPage() {
                     className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                   >
                     <Link href={href} className="block overflow-hidden">
-                      <div className="aspect-[3/4] bg-zinc-100 overflow-hidden">
+                      <div className="relative aspect-[3/4] bg-zinc-100 overflow-hidden">
                         {product?.mainImageUrl ? (
                           <img
                             src={product.mainImageUrl}
@@ -189,6 +249,22 @@ export default function FavorisPage() {
                           <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-zinc-100">
                             <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                               Mawaura
+                            </span>
+                          </div>
+                        )}
+
+                        {/* ✅ badges principaux en haut gauche / droite */}
+                        {topBadges[0] && (
+                          <div className="absolute top-2 left-2">
+                            <span className={topBadges[0].className}>
+                              {topBadges[0].label}
+                            </span>
+                          </div>
+                        )}
+                        {topBadges[1] && (
+                          <div className="absolute top-2 right-2">
+                            <span className={topBadges[1].className}>
+                              {topBadges[1].label}
                             </span>
                           </div>
                         )}
@@ -210,12 +286,20 @@ export default function FavorisPage() {
                           </Link>
                         </div>
 
-                        {stockStatus && (
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`}
-                          >
-                            {stockStatus.label}
-                          </span>
+                        {/* Badges restants en haut à droite du contenu (dont PHARE) */}
+                        {bottomBadges.length > 0 && (
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {bottomBadges.map((badge) => (
+                                <span
+                                  key={badge.key}
+                                  className={badge.className}
+                                >
+                                  {badge.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
 
