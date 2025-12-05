@@ -18,9 +18,9 @@ type HomeProduct = {
   isBestSeller?: boolean;
   tag?: string | null;
   mainImageUrl?: string | null;
-  stock: number;
-  lowStockThreshold: number;
-  isActive: boolean;
+  stock?: number;
+  lowStockThreshold?: number;
+  isActive?: boolean;
 };
 
 type StockStatus =
@@ -31,25 +31,29 @@ type StockStatus =
 
 type Badge = { key: string; label: string; className: string };
 
-function getStockStatus(p: HomeProduct | null): StockStatus | null {
+// ✅ Générique pour tous les écrans
+function getStockStatus(
+  p: { isActive?: boolean; stock?: number; lowStockThreshold?: number } | null
+): StockStatus | null {
   if (!p) return null;
 
-  // produit désactivé
-  if (!p.isActive) {
+  const isActive = p.isActive !== false;
+  const stock = typeof p.stock === "number" ? p.stock : 9999;
+  const lowStockThreshold =
+    typeof p.lowStockThreshold === "number" ? p.lowStockThreshold : 0;
+
+  if (!isActive) {
     return { label: "Indisponible", variant: "danger" };
   }
 
-  // plus de stock
-  if (p.stock <= 0) {
+  if (stock <= 0) {
     return { label: "Bientôt de retour", variant: "warning" };
   }
 
-  // derniers exemplaires
-  if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
+  if (lowStockThreshold > 0 && stock <= lowStockThreshold) {
     return { label: "Derniers exemplaires", variant: "warning" };
   }
 
-  // "En stock" existe pour la logique, mais on ne l'affiche pas forcément
   return { label: "En stock", variant: "ok" };
 }
 
@@ -148,6 +152,12 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
+              <Link
+                href="/boutique"
+                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
+              >
+                Accéder à la boutique complète
+              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -201,14 +211,14 @@ export default function Home() {
                   const favorite = isFavorite(product.id);
                   const stockStatus = getStockStatus(product);
 
-                  // 🎯 même logique que Boutique / Favoris
-                  const isUnavailable = !product.isActive;
-                  const isOutOfStock = !isUnavailable && product.stock <= 0;
-                  const isLowStock =
-                    !isUnavailable &&
-                    product.stock > 0 &&
-                    product.lowStockThreshold > 0 &&
-                    product.stock <= product.lowStockThreshold;
+                  const isUnavailable = product.isActive === false;
+                  const stock =
+                    typeof product.stock === "number" ? product.stock : 9999;
+                  const lowStockThreshold =
+                    typeof product.lowStockThreshold === "number"
+                      ? product.lowStockThreshold
+                      : 0;
+                  const isOutOfStock = !isUnavailable && stock <= 0;
 
                   const disableAddToCart = isUnavailable || isOutOfStock;
 
@@ -243,10 +253,7 @@ export default function Home() {
                     });
                   }
 
-                  if (
-                    stockStatus &&
-                    stockStatus.label !== "En stock"
-                  ) {
+                  if (stockStatus && stockStatus.label !== "En stock") {
                     allBadges.push({
                       key: "stock",
                       label: stockStatus.label,
@@ -263,9 +270,9 @@ export default function Home() {
                     });
                   }
 
-                  // 🔹 Top badges : max 2 (priorité selon l’ordre d’insertion)
+                  // 🔹 Top badges : max 2
                   const topBadges = allBadges.slice(0, 2);
-                  // 🔹 Badges du bas = le reste + PHARE (toujours en bas si isFeatured)
+                  // 🔹 Badges du bas = le reste + PHARE (toujours en bas)
                   const bottomBadges: Badge[] = [
                     ...allBadges.slice(2),
                     ...(product.isFeatured
@@ -307,7 +314,6 @@ export default function Home() {
                           </div>
                         )}
 
-                        {/* ✅ badges principaux : gauche & droite */}
                         {topBadges[0] && (
                           <div className="absolute top-2 left-2">
                             <span className={topBadges[0].className}>
@@ -346,7 +352,6 @@ export default function Home() {
                           </p>
                         )}
 
-                        {/* Badges du bas, incluant toujours PHARE si isFeatured */}
                         {bottomBadges.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {bottomBadges.map((badge) => (
@@ -357,30 +362,10 @@ export default function Home() {
                           </div>
                         )}
 
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center justify-between">
                           <p className="text-sm font-semibold text-zinc-900">
                             {product.price.toFixed(2).replace(".", ",")} €
                           </p>
-
-                          {/* 🧡 Messages de stock comme sur la boutique */}
-                          {isUnavailable && (
-                            <p className="mt-1 text-[11px] text-red-600">
-                              Indisponible pour le moment
-                            </p>
-                          )}
-
-                          {!isUnavailable && isOutOfStock && (
-                            <p className="mt-1 text-[11px] text-amber-600">
-                              Bientôt de retour
-                            </p>
-                          )}
-
-                          {!isUnavailable && isLowStock && (
-                            <p className="mt-1 text-[11px] text-amber-600">
-                              Derniers exemplaires ({product.stock} restant
-                              {product.stock > 1 ? "s" : ""})
-                            </p>
-                          )}
                         </div>
 
                         <div className="mt-3 flex items-center justify-between gap-2">
@@ -410,6 +395,13 @@ export default function Home() {
                                 price: product.price,
                                 category: product.category ?? undefined,
                                 imageUrl: displayImageUrl,
+                                isNew: product.isNew ?? false,
+                                isBestSeller: product.isBestSeller ?? false,
+                                tag: product.tag ?? undefined,
+                                isFeatured: product.isFeatured ?? false,
+                                stock,
+                                lowStockThreshold,
+                                isActive: product.isActive ?? true,
                               })
                             }
                             className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
@@ -438,9 +430,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Section univers de marque avec image de fond + effets dynamiques */}
+      {/* Section univers de marque */}
       <section className="relative border-t border-zinc-200 overflow-hidden">
-        {/* Image de fond pour l'univers Mawaura */}
         <div className="absolute inset-0">
           <Image
             src="/sect_univers.jpg"
@@ -451,9 +442,7 @@ export default function Home() {
           />
         </div>
 
-        {/* Contenu avec blocs blancs pour lisibilité */}
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 grid gap-10 md:grid-cols-[1.1fr,0.9fr] items-start">
-          {/* Colonne gauche : storytelling */}
           <div className="group relative rounded-2xl bg-white/90 px-4 sm:px-6 py-5 shadow-md border border-zinc-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
             <div className="pointer-events-none absolute -left-3 top-10 h-10 w-1 rounded-full bg-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -496,7 +485,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Colonne droite : cartes manifesto */}
           <div className="space-y-4 text-sm sm:text-base">
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
