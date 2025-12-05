@@ -1,7 +1,6 @@
 "use client";
 
-import React,
-{
+import React, {
   createContext,
   useContext,
   useMemo,
@@ -15,12 +14,14 @@ type CartItem = {
   name: string;
   price: number; // en euros
   quantity: number;
+  imageUrl?: string | null;
 };
 
 type AddItemInput = {
   id: string | number;
   name: string;
   price: number | string;
+  imageUrl?: string | null;
 };
 
 type CartContextType = {
@@ -32,7 +33,7 @@ type CartContextType = {
   clearCart: () => void;
   totalQuantity: number;
   totalPrice: number;
-  lastAddedName: string | null; // ✅ pour le toast
+  lastAddedName: string | null;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -40,12 +41,13 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [lastAddedName, setLastAddedName] = useState<string | null>(null);
-  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
 
-    // ancien format "29,90 €" => on nettoie
     const cleaned = price
       .replace(/\s/g, "")
       .replace("€", "")
@@ -62,7 +64,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = prev.find((p) => p.id === id);
       if (existing) {
         return prev.map((p) =>
-          p.id === id ? { ...p, quantity: p.quantity + 1 } : p
+          p.id === id
+            ? { ...p, quantity: p.quantity + 1 }
+            : p
         );
       }
       return [
@@ -72,11 +76,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           name: item.name,
           price,
           quantity: 1,
+          imageUrl: item.imageUrl ?? null,
         },
       ];
     });
 
-    // ✅ gérer le toast "ajouté au panier"
     if (lastAddedTimeoutRef.current) {
       clearTimeout(lastAddedTimeoutRef.current);
     }
@@ -134,7 +138,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     totalQuantity,
     totalPrice,
-    lastAddedName, // ✅ exposé pour le toast
+    lastAddedName,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

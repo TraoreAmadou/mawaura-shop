@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "../cart-context";
 
 export default function PanierPage() {
@@ -73,11 +74,21 @@ export default function PanierPage() {
                     key={item.id}
                     className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex"
                   >
-                    {/* Visuel placeholder */}
-                    <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                        Mawaura
-                      </span>
+                    {/* ✅ Mini vignette image */}
+                    <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center relative overflow-hidden">
+                      {item.imageUrl ? (
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="160px"
+                        />
+                      ) : (
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                          Mawaura
+                        </span>
+                      )}
                     </div>
 
                     {/* Contenu */}
@@ -103,7 +114,7 @@ export default function PanierPage() {
 
                       {/* Quantité + total ligne */}
                       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items.center gap-2">
                           <span className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
                             Quantité
                           </span>
@@ -166,9 +177,7 @@ export default function PanierPage() {
           <div className="space-y-2 text-sm text-zinc-700">
             <div className="flex justify-between">
               <span>Sous-total</span>
-              <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
-              </span>
+              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
             </div>
             <div className="flex justify-between text-zinc-500 text-xs">
               <span>Livraison</span>
@@ -179,9 +188,7 @@ export default function PanierPage() {
           <div className="mt-4 pt-4 border-t border-zinc-200">
             <div className="flex justify-between items-center text-sm font-semibold">
               <span>Total</span>
-              <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
-              </span>
+              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Les frais de livraison seront ajoutés lors de la validation de

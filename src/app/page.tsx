@@ -13,9 +13,8 @@ type HomeProduct = {
   price: number;
   category?: string | null;
   isFeatured?: boolean;
-  imageUrl?: string | null; // ✅ même structure que /api/products
+  imageUrl?: string | null;
 };
-
 
 // ✅ Petit toast global pour le panier
 function CartNotification() {
@@ -112,6 +111,12 @@ export default function Home() {
               >
                 Voir les pièces phares
               </a>
+              <Link
+                href="/boutique"
+                className="text-sm text-yellow-700 underline-offset-4 hover:underline"
+              >
+                Accéder à la boutique complète
+              </Link>
             </div>
 
             <p className="mt-4 text-xs sm:text-sm text-zinc-500">
@@ -119,7 +124,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* SECTION PIÈCES PHARES (toujours sur la même image de fond) */}
+          {/* SECTION PIÈCES PHARES */}
           <section id="collection" className="mt-10 sm:mt-14">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4 sm:mb-6">
               <div>
@@ -169,11 +174,21 @@ export default function Home() {
                       key={product.id}
                       className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                     >
-                      {/* Visuel placeholder, même style que Boutique */}
-                      <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
-                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                          Mawaura
-                        </span>
+                      {/* ✅ Image produit */}
+                      <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative flex items-center justify-center overflow-hidden">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            sizes="(min-width: 768px) 33vw, 50vw"
+                          />
+                        ) : (
+                          <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                            Mawaura
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
@@ -184,7 +199,7 @@ export default function Home() {
                                 {product.category}
                               </p>
                             )}
-                            <h3 className="text-sm font-medium text-zinc-900 line-clamp-2">
+                            <h3 className="text-sm font.medium text-zinc-900 line-clamp-2">
                               {product.name}
                             </h3>
                           </div>
@@ -213,6 +228,7 @@ export default function Home() {
                                 id: product.id,
                                 name: product.name,
                                 price: product.price,
+                                imageUrl: product.imageUrl ?? undefined,
                               })
                             }
                             className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
@@ -227,6 +243,7 @@ export default function Home() {
                                 name: product.name,
                                 price: product.price,
                                 category: product.category,
+                                imageUrl: product.imageUrl,
                               })
                             }
                             className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"

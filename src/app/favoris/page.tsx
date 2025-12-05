@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { useFavorites, FavoriteItem } from "../favorites-context";
+import Image from "next/image";
+import { useFavorites } from "../favorites-context";
 import { useCart } from "../cart-context";
 
 // ✅ Toast réutilisable
@@ -27,8 +28,12 @@ export default function FavorisPage() {
   const { items, removeFavorite, clearFavorites } = useFavorites();
   const { addItem } = useCart();
 
-  const formatPrice = (price: number) =>
-    `${price.toFixed(2).replace(".", ",")} €`;
+  const formatPrice = (price: any) => {
+    if (typeof price === "number") {
+      return `${price.toFixed(2).replace(".", ",")} €`;
+    }
+    return price;
+  };
 
   const hasItems = items.length > 0;
 
@@ -98,16 +103,26 @@ export default function FavorisPage() {
 
             {/* Grille style Boutique */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
-              {items.map((item: FavoriteItem) => (
+              {items.map((item) => (
                 <article
                   key={item.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* visuel placeholder */}
-                  <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center">
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                      Mawaura
-                    </span>
+                  {/* ✅ Image du favori */}
+                  <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative flex items-center justify-center overflow-hidden">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 768px) 33vw, 50vw"
+                      />
+                    ) : (
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                        Mawaura
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
@@ -141,6 +156,7 @@ export default function FavorisPage() {
                             id: item.id,
                             name: item.name,
                             price: item.price,
+                            imageUrl: item.imageUrl,
                           })
                         }
                         className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"

@@ -8,18 +8,19 @@ import React, {
   ReactNode,
 } from "react";
 
-export type FavoriteItem = {
-  id: string;               // ✅ string comme les ids Prisma
+type FavoriteItem = {
+  id: string;
   name: string;
-  price: number;            // ✅ number comme /api/products
+  price: number;
   category?: string | null;
+  imageUrl?: string | null;
 };
 
 type FavoritesContextType = {
   items: FavoriteItem[];
   toggleFavorite: (item: FavoriteItem) => void;
-  isFavorite: (id: string) => boolean;
-  removeFavorite: (id: string) => void;
+  isFavorite: (id: string | number) => boolean;
+  removeFavorite: (id: string | number) => void;
   clearFavorites: () => void;
   totalFavorites: number;
 };
@@ -31,20 +32,25 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<FavoriteItem[]>([]);
 
-  const isFavorite = (id: string) => items.some((item) => item.id === id);
+  const isFavorite = (id: string | number) => {
+    const key = String(id);
+    return items.some((item) => item.id === key);
+  };
 
   const toggleFavorite = (item: FavoriteItem) => {
+    const key = String(item.id);
     setItems((prev) => {
-      const exists = prev.some((p) => p.id === item.id);
+      const exists = prev.some((p) => p.id === key);
       if (exists) {
-        return prev.filter((p) => p.id !== item.id);
+        return prev.filter((p) => p.id !== key);
       }
-      return [...prev, item];
+      return [...prev, { ...item, id: key }];
     });
   };
 
-  const removeFavorite = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  const removeFavorite = (id: string | number) => {
+    const key = String(id);
+    setItems((prev) => prev.filter((item) => item.id !== key));
   };
 
   const clearFavorites = () => setItems([]);
