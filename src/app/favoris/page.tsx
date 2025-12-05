@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useFavorites } from "../favorites-context";
 import { useCart } from "../cart-context";
 
+// ✅ Toast réutilisable
 function CartNotification() {
   const { lastAddedName, totalQuantity } = useCart();
 
@@ -96,35 +97,40 @@ export default function FavorisPage() {
               </button>
             </div>
 
+            {/* Grille style Boutique (taille comme avant) */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
-              {items.map((item) => (
+              {items.map((item: any) => (
                 <article
                   key={item.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
                   {/* Zone cliquable → fiche produit */}
                   <Link
-                    href={`/boutique/${item.slug}`}
+                    href={item.slug ? `/boutique/${item.slug}` : "#"}
                     className="flex-1 flex flex-col"
                   >
-                    <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center relative">
+                    {/* Visuel : même taille qu'avant, mais avec image + zoom léger */}
+                    <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative overflow-hidden">
                       {item.imageUrl ? (
                         <Image
                           src={item.imageUrl}
                           alt={item.name}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                           sizes="(min-width: 768px) 33vw, 50vw"
                         />
                       ) : (
-                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                          Mawaura
-                        </span>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                            Mawaura
+                          </span>
+                        </div>
                       )}
                     </div>
 
                     <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
-                      <div className="flex.items-start justify-between gap-2">
+                      {/* Titre + catégorie */}
+                      <div className="flex items-start justify-between gap-2">
                         <div>
                           {item.category && (
                             <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mb-1">
@@ -137,6 +143,7 @@ export default function FavorisPage() {
                         </div>
                       </div>
 
+                      {/* Prix */}
                       <div className="mt-1 flex items-center justify-between">
                         <p className="text-sm font-semibold text-zinc-900">
                           {formatPrice(item.price)}
@@ -145,8 +152,8 @@ export default function FavorisPage() {
                     </div>
                   </Link>
 
-                  {/* Boutons */}
-                  <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-1 flex items-center justify-between gap-2">
+                  {/* Boutons (hors du Link pour pouvoir cliquer correctement) */}
+                  <div className="mt-3 px-3 sm:px-4 pb-3 sm:pb-4 flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() =>
@@ -178,8 +185,8 @@ export default function FavorisPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-zinc-500">
+      <footer className="border-t border-zinc-200.bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between.gap-3 text-xs sm:text-sm text-zinc-500">
           <p>
             © {new Date().getFullYear()} Mawaura Accessories. Tous droits
             réservés.
@@ -195,6 +202,7 @@ export default function FavorisPage() {
         </div>
       </footer>
 
+      {/* Toast panier */}
       <CartNotification />
     </main>
   );

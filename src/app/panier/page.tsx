@@ -49,7 +49,7 @@ export default function PanierPage() {
         </div>
       </header>
 
-      <section className="max-w-6xl.mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 md:grid-cols-[2fr,1fr]">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 md:grid-cols-[2fr,1fr]">
         {/* Colonne gauche : liste des articles */}
         <div className="space-y-4">
           {!hasItems ? (
@@ -175,7 +175,7 @@ export default function PanierPage() {
                 );
               })}
 
-              <div className="flex justify-between items-center.mt-4 text-xs sm:text-sm">
+              <div className="flex justify-between items-center mt-4 text-xs sm:text-sm">
                 <button
                   type="button"
                   onClick={clearCart}
@@ -192,7 +192,7 @@ export default function PanierPage() {
         </div>
 
         {/* Colonne droite : récapitulatif */}
-        <aside className="border border-zinc-200 rounded-2xl p-5 sm:p-6 bg-white shadow-sm h-fit">
+        <aside className="border.border-zinc-200 rounded-2xl p-5 sm:p-6 bg-white shadow-sm h-fit">
           <h2 className="text-sm sm:text-base font-semibold mb-4">
             Récapitulatif
           </h2>
@@ -225,7 +225,7 @@ export default function PanierPage() {
           <button
             type="button"
             disabled={!hasItems}
-            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white.hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50.disabled:cursor-not-allowed"
+            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Valider mon panier
           </button>

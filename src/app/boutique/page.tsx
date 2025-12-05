@@ -188,19 +188,21 @@ export default function BoutiquePage() {
                     href={`/boutique/${product.slug}`}
                     className="flex-1 flex flex-col"
                   >
-                    <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center relative">
+                    <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative overflow-hidden">
                       {product.imageUrl ? (
                         <Image
                           src={product.imageUrl}
                           alt={product.name}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                           sizes="(min-width: 768px) 33vw, 50vw"
                         />
                       ) : (
-                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                          Mawaura
-                        </span>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                            Mawaura
+                          </span>
+                        </div>
                       )}
                     </div>
 
