@@ -9,15 +9,16 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    // On normalise un peu pour le front
+    // On normalise pour le front
     const formatted = products.map((p) => ({
       id: p.id,
+      slug: p.slug,
       name: p.name,
       description: p.description,
       category: p.category,
       price: p.priceCents / 100, // en euros
       isFeatured: p.isFeatured,
-      imageUrl: p.mainImageUrl || null, // ✅ image principale
+      imageUrl: p.mainImageUrl, // ✅ image principale
     }));
 
     return NextResponse.json(formatted);

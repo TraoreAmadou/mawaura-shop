@@ -10,6 +10,7 @@ import React, {
 
 type FavoriteItem = {
   id: string;
+  slug: string;
   name: string;
   price: number;
   category?: string | null;
@@ -19,8 +20,8 @@ type FavoriteItem = {
 type FavoritesContextType = {
   items: FavoriteItem[];
   toggleFavorite: (item: FavoriteItem) => void;
-  isFavorite: (id: string | number) => boolean;
-  removeFavorite: (id: string | number) => void;
+  isFavorite: (id: string) => boolean;
+  removeFavorite: (id: string) => void;
   clearFavorites: () => void;
   totalFavorites: number;
 };
@@ -32,25 +33,20 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<FavoriteItem[]>([]);
 
-  const isFavorite = (id: string | number) => {
-    const key = String(id);
-    return items.some((item) => item.id === key);
-  };
+  const isFavorite = (id: string) => items.some((item) => item.id === id);
 
   const toggleFavorite = (item: FavoriteItem) => {
-    const key = String(item.id);
     setItems((prev) => {
-      const exists = prev.some((p) => p.id === key);
+      const exists = prev.some((p) => p.id === item.id);
       if (exists) {
-        return prev.filter((p) => p.id !== key);
+        return prev.filter((p) => p.id !== item.id);
       }
-      return [...prev, { ...item, id: key }];
+      return [...prev, item];
     });
   };
 
-  const removeFavorite = (id: string | number) => {
-    const key = String(id);
-    setItems((prev) => prev.filter((item) => item.id !== key));
+  const removeFavorite = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const clearFavorites = () => setItems([]);

@@ -8,6 +8,7 @@ import { useFavorites } from "../favorites-context";
 
 type ShopProduct = {
   id: string;
+  slug: string;
   name: string;
   description?: string | null;
   category?: string | null;
@@ -181,31 +182,38 @@ export default function BoutiquePage() {
               return (
                 <article
                   key={product.id}
-                  className="group border border-zinc-200 rounded-2xl overflow-hidden bg.white bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
+                  className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* ✅ Image produit */}
-                  <div className="aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 relative flex items-center justify-center overflow-hidden">
+                  {/* ✅ Image cliquable vers la page détail */}
+                  <Link
+                    href={`/boutique/${product.slug}`}
+                    className="block relative aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 overflow-hidden"
+                  >
                     {product.imageUrl ? (
                       <Image
                         src={product.imageUrl}
                         alt={product.name}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                         sizes="(min-width: 768px) 33vw, 50vw"
                       />
                     ) : (
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                        Mawaura
-                      </span>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                          Mawaura
+                        </span>
+                      </div>
                     )}
-                  </div>
+                  </Link>
 
                   <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h2 className="text-sm font-medium text-zinc-900 line-clamp-2">
-                          {product.name}
-                        </h2>
+                        <Link href={`/boutique/${product.slug}`}>
+                          <h2 className="text-sm font-medium text-zinc-900 line-clamp-2 hover:underline">
+                            {product.name}
+                          </h2>
+                        </Link>
                         {product.category && (
                           <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mt-1">
                             {product.category}
@@ -213,7 +221,7 @@ export default function BoutiquePage() {
                         )}
                       </div>
                       {product.isFeatured && (
-                        <span className="inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
+                        <span className="inline-flex items-center rounded-full bg-yellow-500 text.white text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]">
                           Phare
                         </span>
                       )}

@@ -1,6 +1,7 @@
 "use client";
 
-import React, {
+import React,
+{
   createContext,
   useContext,
   useMemo,
@@ -14,6 +15,7 @@ type CartItem = {
   name: string;
   price: number; // en euros
   quantity: number;
+  slug?: string;
   imageUrl?: string | null;
 };
 
@@ -21,6 +23,7 @@ type AddItemInput = {
   id: string | number;
   name: string;
   price: number | string;
+  slug?: string;
   imageUrl?: string | null;
 };
 
@@ -41,9 +44,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [lastAddedName, setLastAddedName] = useState<string | null>(null);
-  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
@@ -76,6 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           name: item.name,
           price,
           quantity: 1,
+          slug: item.slug,
           imageUrl: item.imageUrl ?? null,
         },
       ];
