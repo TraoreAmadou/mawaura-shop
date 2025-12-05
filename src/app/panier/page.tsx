@@ -49,7 +49,7 @@ export default function PanierPage() {
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 md:grid-cols-[2fr,1fr]">
+      <section className="max-w-6xl.mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 md:grid-cols-[2fr,1fr]">
         {/* Colonne gauche : liste des articles */}
         <div className="space-y-4">
           {!hasItems ? (
@@ -74,30 +74,52 @@ export default function PanierPage() {
                     key={item.id}
                     className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex"
                   >
-                    {/* ✅ Mini vignette image */}
-                    <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center relative overflow-hidden">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="160px"
-                        />
-                      ) : (
+                    {/* Visuel cliquable si slug dispo */}
+                    {item.slug ? (
+                      <Link
+                        href={`/boutique/${item.slug}`}
+                        className="hidden sm:flex w-32 md:w-40 bg-zinc-50 items-center justify-center relative overflow-hidden"
+                      >
+                        {item.imageUrl ? (
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="160px"
+                          />
+                        ) : (
+                          <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                            Mawaura
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      <div className="hidden sm:flex w-32 md:w-40 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 items-center justify-center">
                         <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
                           Mawaura
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Contenu */}
                     <div className="flex-1 p-4 sm:p-5 flex flex-col gap-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h2 className="text-sm sm:text-base font-medium text-zinc-900">
-                            {item.name}
-                          </h2>
+                          {item.slug ? (
+                            <Link
+                              href={`/boutique/${item.slug}`}
+                              className="hover:underline"
+                            >
+                              <h2 className="text-sm sm:text-base font-medium text-zinc-900">
+                                {item.name}
+                              </h2>
+                            </Link>
+                          ) : (
+                            <h2 className="text-sm sm:text-base font-medium text-zinc-900">
+                              {item.name}
+                            </h2>
+                          )}
                           <p className="mt-1 text-[11px] text-zinc-500">
                             Prix unitaire :{" "}
                             {item.price.toFixed(2).replace(".", ",")} €
@@ -114,7 +136,7 @@ export default function PanierPage() {
 
                       {/* Quantité + total ligne */}
                       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100">
-                        <div className="flex items.center gap-2">
+                        <div className="flex items-center gap-2">
                           <span className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
                             Quantité
                           </span>
@@ -153,7 +175,7 @@ export default function PanierPage() {
                 );
               })}
 
-              <div className="flex justify-between items-center mt-4 text-xs sm:text-sm">
+              <div className="flex justify-between items-center.mt-4 text-xs sm:text-sm">
                 <button
                   type="button"
                   onClick={clearCart}
@@ -177,7 +199,9 @@ export default function PanierPage() {
           <div className="space-y-2 text-sm text-zinc-700">
             <div className="flex justify-between">
               <span>Sous-total</span>
-              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
+              <span>
+                {totalPrice.toFixed(2).replace(".", ",")} €
+              </span>
             </div>
             <div className="flex justify-between text-zinc-500 text-xs">
               <span>Livraison</span>
@@ -188,7 +212,9 @@ export default function PanierPage() {
           <div className="mt-4 pt-4 border-t border-zinc-200">
             <div className="flex justify-between items-center text-sm font-semibold">
               <span>Total</span>
-              <span>{totalPrice.toFixed(2).replace(".", ",")} €</span>
+              <span>
+                {totalPrice.toFixed(2).replace(".", ",")} €
+              </span>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Les frais de livraison seront ajoutés lors de la validation de
@@ -199,7 +225,7 @@ export default function PanierPage() {
           <button
             type="button"
             disabled={!hasItems}
-            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white.hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50.disabled:cursor-not-allowed"
           >
             Valider mon panier
           </button>

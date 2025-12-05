@@ -1,7 +1,6 @@
 "use client";
 
-import React,
-{
+import React, {
   createContext,
   useContext,
   useMemo,
@@ -44,7 +43,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [lastAddedName, setLastAddedName] = useState<string | null>(null);
-  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
