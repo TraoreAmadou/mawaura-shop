@@ -173,9 +173,10 @@ export default function FavorisPage() {
                       : "border-red-200 bg-red-50 text-red-700";
                 }
 
-                const href = product
-                  ? `/boutique/${product.slug}`
-                  : "/boutique";
+                const href =
+                  product && product.slug
+                    ? `/boutique/${product.slug}`
+                    : "/boutique";
 
                 type Badge = { key: string; label: string; className: string };
 
@@ -231,6 +232,12 @@ export default function FavorisPage() {
                       ]
                     : []),
                 ];
+
+                // ✅ logique bouton "Indisponible"
+                const isInactive = product?.isActive === false;
+                const stock = product?.stock ?? 9999;
+                const isOutOfStock = !isInactive && stock <= 0;
+                const disableAddToCart = isInactive || isOutOfStock;
 
                 return (
                   <article
@@ -318,16 +325,13 @@ export default function FavorisPage() {
                               id: item.id,
                               name: item.name,
                               price: item.price,
+                              imageUrl: product?.mainImageUrl ?? null,
                             })
                           }
-                          className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors"
-                          disabled={
-                            stockStatus?.label === "Bientôt de retour" ||
-                            stockStatus?.label === "Indisponible"
-                          }
+                          disabled={disableAddToCart}
+                          className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {stockStatus?.label === "Bientôt de retour" ||
-                          stockStatus?.label === "Indisponible"
+                          {disableAddToCart
                             ? "Indisponible"
                             : "Ajouter au panier"}
                         </button>

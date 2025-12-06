@@ -11,15 +11,15 @@ type ShopProduct = {
   name: string;
   description?: string | null;
   category?: string | null;
-  price: number; // en euros
+  price: number;
   isFeatured?: boolean;
   isNew?: boolean;
   isBestSeller?: boolean;
   tag?: string | null;
   mainImageUrl?: string | null;
-  stock: number;
-  lowStockThreshold: number;
-  isActive: boolean;
+  stock?: number;
+  lowStockThreshold?: number;
+  isActive?: boolean;
 };
 
 type StockStatus =
@@ -28,25 +28,34 @@ type StockStatus =
   | { label: "Bientôt de retour"; variant: "warning" }
   | { label: "Indisponible"; variant: "danger" };
 
-// Helper pour le status de stock
-function getStockStatus(p: ShopProduct): StockStatus {
-  if (!p.isActive) {
+type Badge = { key: string; label: string; className: string };
+
+function getStockStatus(
+  p: { isActive?: boolean; stock?: number; lowStockThreshold?: number } | null
+): StockStatus | null {
+  if (!p) return null;
+
+  const isActive = p.isActive !== false;
+  const stock = typeof p.stock === "number" ? p.stock : 9999;
+  const lowStockThreshold =
+    typeof p.lowStockThreshold === "number" ? p.lowStockThreshold : 0;
+
+  if (!isActive) {
     return { label: "Indisponible", variant: "danger" };
   }
 
-  if (p.stock <= 0) {
+  if (stock <= 0) {
     return { label: "Bientôt de retour", variant: "warning" };
   }
 
-  if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) {
+  if (lowStockThreshold > 0 && stock <= lowStockThreshold) {
     return { label: "Derniers exemplaires", variant: "warning" };
   }
 
-  // "En stock" → on renvoie mais on ne l'affichera pas visuellement
   return { label: "En stock", variant: "ok" };
 }
 
-// ✅ Petit composant de notification panier
+// ✅ Toast réutilisable
 function CartNotification() {
   const { lastAddedName, totalQuantity } = useCart();
 
@@ -209,149 +218,152 @@ export default function BoutiquePage() {
               const favorite = isFavorite(product.id);
               const stockStatus = getStockStatus(product);
 
-              const stockClass =
-                stockStatus.variant === "ok"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : stockStatus.variant === "warning"
-                  ? "border-amber-200 bg-amber-50 text-amber-700"
-                  : "border-red-200 bg-red-50 text-red-700";
+              const isUnavailable = product.isActive === false;
+              const stock =
+                typeof product.stock === "number" ? product.stock : 9999;
+              const lowStockThreshold =
+                typeof product.lowStockThreshold === "number"
+                  ? product.lowStockThreshold
+                  : 0;
+              const isOutOfStock = !isUnavailable && stock <= 0;
 
-              type Badge = { key: string; label: string; className: string };
+              const disableAddToCart = isUnavailable || isOutOfStock;
 
-              // ✅ candidats pour le haut (max 2, jamais "Phare" ici)
-              const topCandidates: Badge[] = [];
+              let stockClass = "";
+              if (stockStatus) {
+                stockClass =
+                  stockStatus.variant === "ok"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : stockStatus.variant === "warning"
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-red-200 bg-red-50 text-red-700";
+              }
+
+              const allBadges: Badge[] = [];
 
               if (product.isNew) {
-                topCandidates.push({
+                allBadges.push({
                   key: "new",
                   label: "Nouveau",
                   className:
-                    "inline-flex items-center rounded-full bg-zinc-900 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                    "inline-flex items-center rounded-full bg-zinc-900 text-white px-2.5 py-1 text-[9px] uppercase tracking-[0.18em]",
                 });
               }
 
               if (product.isBestSeller) {
-                topCandidates.push({
+                allBadges.push({
                   key: "best",
                   label: "Best-seller",
                   className:
-                    "inline-flex items-center rounded-full bg-white/90 text-zinc-900 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                    "inline-flex items-center rounded-full bg-white text-zinc-900 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
                 });
               }
 
-              if (stockStatus.label !== "En stock") {
-                topCandidates.push({
+              if (stockStatus && stockStatus.label !== "En stock") {
+                allBadges.push({
                   key: "stock",
                   label: stockStatus.label,
-                  className: `inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] ${stockClass}`,
+                  className: `inline-flex items-center rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] ${stockClass}`,
                 });
               }
 
               if (product.tag) {
-                topCandidates.push({
+                allBadges.push({
                   key: "tag",
                   label: product.tag,
                   className:
-                    "inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
+                    "inline-flex items-center rounded-full bg-zinc-50 text-zinc-700 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] border border-zinc-200",
                 });
               }
 
-              const topBadges = topCandidates.slice(0, 2);
-
-              // ✅ "Phare" toujours en bas
+              const topBadges = allBadges.slice(0, 2);
               const bottomBadges: Badge[] = [
-                ...topCandidates.slice(2),
+                ...allBadges.slice(2),
                 ...(product.isFeatured
                   ? [
                       {
                         key: "featured",
                         label: "Phare",
                         className:
-                          "inline-flex items-center rounded-full bg-yellow-500 text-white px-2 py-0.5 text-[9px] uppercase tracking-[0.18em]",
+                          "inline-flex items-center rounded-full bg-yellow-500 text-white px-2.5 py-1 text-[9px] uppercase tracking-[0.18em]",
                       } as Badge,
                     ]
                   : []),
               ];
+
+              const href = `/boutique/${product.slug}`;
+              const displayImageUrl = product.mainImageUrl ?? null;
 
               return (
                 <article
                   key={product.id}
                   className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow] flex flex-col"
                 >
-                  {/* visuel + badges principaux en haut */}
+                  {/* visuel + badges top */}
                   <Link
-                    href={`/boutique/${product.slug}`}
-                    className="block overflow-hidden"
+                    href={href}
+                    className="relative block aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 overflow-hidden"
                   >
-                    <div className="relative aspect-[3/4] bg-zinc-100 overflow-hidden">
-                      {product.mainImageUrl ? (
-                        <img
-                          src={product.mainImageUrl}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-yellow-50 via-white to-zinc-100">
-                          <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
-                            Mawaura
-                          </span>
-                        </div>
-                      )}
+                    {displayImageUrl ? (
+                      <img
+                        src={displayImageUrl}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-600">
+                          Mawaura
+                        </span>
+                      </div>
+                    )}
 
-                      {/* ✅ badges principaux en haut : gauche + droite */}
-                      {topBadges[0] && (
-                        <div className="absolute top-2 left-2">
-                          <span className={topBadges[0].className}>
-                            {topBadges[0].label}
-                          </span>
-                        </div>
-                      )}
-                      {topBadges[1] && (
-                        <div className="absolute top-2 right-2">
-                          <span className={topBadges[1].className}>
-                            {topBadges[1].label}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {topBadges[0] && (
+                      <div className="absolute top-2 left-2">
+                        <span className={topBadges[0].className}>
+                          {topBadges[0].label}
+                        </span>
+                      </div>
+                    )}
+                    {topBadges[1] && (
+                      <div className="absolute top-2 right-2">
+                        <span className={topBadges[1].className}>
+                          {topBadges[1].label}
+                        </span>
+                      </div>
+                    )}
                   </Link>
 
                   <div className="flex-1 p-3 sm:p-4 flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <Link href={`/boutique/${product.slug}`}>
+                        {product.category && (
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mb-1">
+                            {product.category}
+                          </p>
+                        )}
+                        <Link href={href}>
                           <h2 className="text-sm font-medium text-zinc-900 line-clamp-2 hover:underline">
                             {product.name}
                           </h2>
                         </Link>
-                        {product.category && (
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500 mt-1">
-                            {product.category}
-                          </p>
-                        )}
                       </div>
-
-                      {/* Badges restants (dont PHARE) en bas à droite du header */}
-                      {bottomBadges.length > 0 && (
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex flex-wrap gap-1 justify-end">
-                            {bottomBadges.map((badge) => (
-                              <span
-                                key={badge.key}
-                                className={badge.className}
-                              >
-                                {badge.label}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {product.description && (
                       <p className="text-[11px] text-zinc-500 line-clamp-2">
                         {product.description}
                       </p>
+                    )}
+
+                    {bottomBadges.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {bottomBadges.map((badge) => (
+                          <span key={badge.key} className={badge.className}>
+                            {badge.label}
+                          </span>
+                        ))}
+                      </div>
                     )}
 
                     <div className="mt-1 flex items-center justify-between">
@@ -368,14 +380,13 @@ export default function BoutiquePage() {
                             id: product.id,
                             name: product.name,
                             price: product.price,
+                            imageUrl: displayImageUrl,
                           })
                         }
-                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-60"
-                        disabled={!product.isActive || product.stock <= 0}
+                        disabled={disableAddToCart}
+                        className="flex-1 inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {product.stock <= 0 || !product.isActive
-                          ? "Indisponible"
-                          : "Ajouter au panier"}
+                        {disableAddToCart ? "Indisponible" : "Ajouter au panier"}
                       </button>
                       <button
                         type="button"
@@ -385,6 +396,14 @@ export default function BoutiquePage() {
                             name: product.name,
                             price: product.price,
                             category: product.category ?? undefined,
+                            imageUrl: displayImageUrl,
+                            isNew: product.isNew ?? false,
+                            isBestSeller: product.isBestSeller ?? false,
+                            tag: product.tag ?? undefined,
+                            isFeatured: product.isFeatured ?? false,
+                            stock,
+                            lowStockThreshold,
+                            isActive: product.isActive ?? true,
                           })
                         }
                         className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
