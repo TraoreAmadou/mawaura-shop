@@ -52,6 +52,7 @@ export async function GET(
       id: order.id,
       createdAt: order.createdAt,
       status: order.status,
+      shippingStatus: (order as any).shippingStatus ?? "PREPARATION",
       totalCents: order.totalCents,
       email: order.email,
       customerName: order.customerName,
@@ -78,7 +79,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/admin/orders/:id → mise à jour statut (et éventuellement notes/adresse)
+// PATCH /api/admin/orders/:id → mise à jour statut & suivi
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -99,6 +100,7 @@ export async function PATCH(
 
   let body: {
     status?: "PENDING" | "CONFIRMED" | "CANCELLED";
+    shippingStatus?: "PREPARATION" | "SHIPPED" | "DELIVERED";
     notes?: string | null;
     shippingAddress?: string | null;
   };
@@ -123,6 +125,17 @@ export async function PATCH(
       );
     }
     updates.status = body.status;
+  }
+
+  if (body.shippingStatus) {
+    const allowedShipping = ["PREPARATION", "SHIPPED", "DELIVERED"] as const;
+    if (!allowedShipping.includes(body.shippingStatus)) {
+      return NextResponse.json(
+        { error: "Statut de suivi invalide." },
+        { status: 400 }
+      );
+    }
+    updates.shippingStatus = body.shippingStatus;
   }
 
   if (typeof body.notes !== "undefined") {
@@ -150,6 +163,7 @@ export async function PATCH(
       {
         id: updated.id,
         status: updated.status,
+        shippingStatus: (updated as any).shippingStatus ?? "PREPARATION",
         notes: (updated as any).notes ?? null,
         shippingAddress: (updated as any).shippingAddress ?? null,
       },

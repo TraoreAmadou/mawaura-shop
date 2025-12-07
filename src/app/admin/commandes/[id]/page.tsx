@@ -15,10 +15,13 @@ type AdminOrderItem = {
   productSlugSnapshot?: string | null;
 };
 
+type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED";
+
 type AdminOrder = {
   id: string;
   createdAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED";
+  shippingStatus: ShippingStatus;
   totalCents: number;
   email: string;
   customerName?: string | null;
@@ -50,6 +53,19 @@ function getStatusBadge(order: AdminOrder) {
   }
 }
 
+function getShippingLabel(status: ShippingStatus): string {
+  switch (status) {
+    case "PREPARATION":
+      return "En préparation";
+    case "SHIPPED":
+      return "Expédiée";
+    case "DELIVERED":
+      return "Livrée";
+    default:
+      return "En préparation";
+  }
+}
+
 export default function AdminOrderDetailPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -65,6 +81,7 @@ export default function AdminOrderDetailPage() {
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savingShipping, setSavingShipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAdmin = (session?.user as any)?.role === "ADMIN";
@@ -91,7 +108,11 @@ export default function AdminOrderDetailPage() {
         }
 
         if (!cancelled) {
-          setOrder(data as AdminOrder);
+          const o = data as AdminOrder;
+          setOrder({
+            ...o,
+            shippingStatus: o.shippingStatus || "PREPARATION",
+          });
         }
       } catch (err) {
         console.error(err);
@@ -140,6 +161,39 @@ export default function AdminOrderDetailPage() {
       );
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const updateShippingStatus = async (shippingStatus: ShippingStatus) => {
+    if (!orderId) return;
+    setSavingShipping(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingStatus }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message =
+          data?.error ||
+          "Impossible de mettre à jour le suivi de la commande.";
+        setError(message);
+        return;
+      }
+      setOrder((prev) =>
+        prev
+          ? { ...prev, shippingStatus: data.shippingStatus as ShippingStatus }
+          : prev
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        "Une erreur réseau est survenue lors de la mise à jour du suivi."
+      );
+    } finally {
+      setSavingShipping(false);
     }
   };
 
@@ -261,6 +315,9 @@ export default function AdminOrderDetailPage() {
                       </span>
                     </div>
                   )}
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    Suivi : {getShippingLabel(order.shippingStatus)}
+                  </p>
                 </div>
               </div>
 
@@ -286,14 +343,14 @@ export default function AdminOrderDetailPage() {
               </div>
             </div>
 
-            {/* Bloc actions statut */}
+            {/* Bloc actions statut commande (paiement / admin) */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <h2 className="text-sm font-semibold tracking-tight mb-3">
-                Statut de la commande
+                Statut administratif de la commande
               </h2>
               <p className="text-xs text-zinc-600 mb-4">
-                Mettez à jour le statut en fonction de l&apos;avancement
-                (paiement confirmé, commande annulée…).
+                Mettez à jour le statut global (paiement confirmé, commande
+                annulée…).
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -338,6 +395,73 @@ export default function AdminOrderDetailPage() {
                   Mise à jour du statut en cours...
                 </p>
               )}
+            </div>
+
+            {/* Bloc suivi de commande (logistique) */}
+            <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
+              <h2 className="text-sm font-semibold tracking-tight mb-3">
+                Suivi logistique de la commande
+              </h2>
+              <p className="text-xs text-zinc-600 mb-4">
+                Faites avancer la commande dans le parcours client : préparation,
+                expédition, livraison.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  disabled={
+                    savingShipping || order.shippingStatus === "PREPARATION"
+                  }
+                  onClick={() => updateShippingStatus("PREPARATION")}
+                  className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] ${
+                    order.shippingStatus === "PREPARATION"
+                      ? "bg-zinc-900 border-zinc-900 text-white"
+                      : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  En préparation
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    savingShipping || order.shippingStatus === "SHIPPED"
+                  }
+                  onClick={() => updateShippingStatus("SHIPPED")}
+                  className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] ${
+                    order.shippingStatus === "SHIPPED"
+                      ? "bg-sky-100 border-sky-300 text-sky-800"
+                      : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  Expédiée
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    savingShipping || order.shippingStatus === "DELIVERED"
+                  }
+                  onClick={() => updateShippingStatus("DELIVERED")}
+                  className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] ${
+                    order.shippingStatus === "DELIVERED"
+                      ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                      : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  Livrée
+                </button>
+              </div>
+
+              {savingShipping && (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Mise à jour du suivi en cours...
+                </p>
+              )}
+
+              <p className="text-[11px] text-zinc-500 mt-2">
+                Ce statut est visible par le client dans son espace “Mes
+                commandes”.
+              </p>
             </div>
 
             {/* Détail des articles */}

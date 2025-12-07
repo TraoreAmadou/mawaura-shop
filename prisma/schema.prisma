@@ -20,6 +20,13 @@ enum OrderStatus {
   CANCELLED  // commande annulée
 }
 
+enum ShippingStatus {
+  PREPARATION
+  SHIPPED
+  DELIVERED
+}
+
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -126,6 +133,7 @@ model Order {
   totalCents  Int
 
   status      OrderStatus  @default(PENDING)
+  shippingStatus ShippingStatus @default(PREPARATION)
 
   // Lignes de commande
   items       OrderItem[]

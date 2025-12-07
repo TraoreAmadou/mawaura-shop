@@ -1,9 +1,11 @@
 "use client";
-// Nouveau fichier pour le détail d’une commande.
+
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+
+type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED";
 
 type ApiOrderItem = {
   id: string;
@@ -25,6 +27,8 @@ type ApiOrder = {
   items: ApiOrderItem[];
   shippingAddress?: string | null;
   notes?: string | null;
+  // 🔹 Nouveau champ (optionnel pour rester compatible avec l'existant)
+  shippingStatus?: ShippingStatus;
 };
 
 function getStatusBadge(status: ApiOrder["status"]) {
@@ -48,6 +52,110 @@ function getStatusBadge(status: ApiOrder["status"]) {
           "inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700",
       };
   }
+}
+
+// 🔹 Helpers suivi logistique
+
+function shippingStatusLabel(status: ShippingStatus): string {
+  switch (status) {
+    case "PREPARATION":
+      return "En préparation";
+    case "SHIPPED":
+      return "Expédiée";
+    case "DELIVERED":
+      return "Livrée";
+    default:
+      return "En préparation";
+  }
+}
+
+function shippingStatusDescription(status: ShippingStatus): string {
+  switch (status) {
+    case "PREPARATION":
+      return "Votre commande est en cours de préparation par Mawaura.";
+    case "SHIPPED":
+      return "Votre commande a été expédiée. Elle est en route jusqu’à vous.";
+    case "DELIVERED":
+      return "Votre commande a été livrée. Merci pour votre confiance ✨";
+    default:
+      return "";
+  }
+}
+
+function shippingStepIndex(status: ShippingStatus): number {
+  switch (status) {
+    case "PREPARATION":
+      return 0;
+    case "SHIPPED":
+      return 1;
+    case "DELIVERED":
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+function ShippingStepper({ status }: { status: ShippingStatus }) {
+  const steps = [
+    { key: "PREPARATION", label: "En préparation" },
+    { key: "SHIPPED", label: "Expédiée" },
+    { key: "DELIVERED", label: "Livrée" },
+  ] as const;
+
+  const currentIndex = shippingStepIndex(status);
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between gap-2">
+        {steps.map((step, index) => {
+          const isDone = index < currentIndex;
+          const isCurrent = index === currentIndex;
+
+          const circleBase =
+            "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold";
+          const labelBase = "text-[11px] font-medium";
+
+          let circleClass = "bg-zinc-200 text-zinc-600";
+          let labelClass = "text-zinc-400";
+
+          if (isDone) {
+            circleClass = "bg-emerald-600 text-white";
+            labelClass = "text-emerald-700";
+          } else if (isCurrent) {
+            circleClass = "bg-zinc-900 text-white";
+            labelClass = "text-zinc-900";
+          }
+
+          return (
+            <div key={step.key} className="flex-1 flex flex-col items-center">
+              <div className="flex items-center w-full">
+                {index > 0 && (
+                  <div
+                    className={`h-[2px] flex-1 ${
+                      index <= currentIndex ? "bg-zinc-900" : "bg-zinc-200"
+                    }`}
+                  />
+                )}
+                <div className={`${circleBase} ${circleClass}`}>
+                  {index + 1}
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`h-[2px] flex-1 ${
+                      index < currentIndex ? "bg-zinc-900" : "bg-zinc-200"
+                    }`}
+                  />
+                )}
+              </div>
+              <p className={`${labelBase} ${labelClass} mt-1 text-center`}>
+                {step.label}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function CommandeDetailPage() {
@@ -74,6 +182,8 @@ export default function CommandeDetailPage() {
       setLoading(true);
       setError(null);
       try {
+        // 🔹 On garde ton comportement : on récupère TOUTES les commandes
+        // puis on filtre côté front.
         const res = await fetch("/api/orders");
         if (!res.ok) {
           const data = await res.json().catch(() => null);
@@ -84,14 +194,23 @@ export default function CommandeDetailPage() {
           return;
         }
         const data = (await res.json()) as ApiOrder[];
+
         const found =
           Array.isArray(data) &&
           data.find((o) => o.id === orderId);
+
         if (!cancelled) {
           if (!found) {
             setError("Commande introuvable.");
           } else {
-            setOrder(found);
+            // 🔹 On force un shippingStatus par défaut si l'API ne le renvoie pas
+            const ss =
+              (found.shippingStatus as ShippingStatus | undefined) ||
+              "PREPARATION";
+            setOrder({
+              ...found,
+              shippingStatus: ss,
+            });
           }
         }
       } catch (err) {
@@ -145,6 +264,8 @@ export default function CommandeDetailPage() {
   }
 
   const badge = order ? getStatusBadge(order.status) : null;
+  const shippingStatus: ShippingStatus =
+    (order?.shippingStatus as ShippingStatus | undefined) || "PREPARATION";
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
@@ -185,6 +306,7 @@ export default function CommandeDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Bloc résumé + statut + suivi */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -233,6 +355,17 @@ export default function CommandeDetailPage() {
                 </div>
               </div>
 
+              {/* 🔹 Suivi logistique */}
+              <div className="mt-4">
+                <p className="text-xs font-medium text-zinc-700 mb-1">
+                  Suivi de votre commande
+                </p>
+                <ShippingStepper status={shippingStatus} />
+                <p className="mt-3 text-[11px] text-zinc-500">
+                  {shippingStatusDescription(shippingStatus)}
+                </p>
+              </div>
+
               <div className="mt-4 grid gap-4 sm:grid-cols-2 text-xs sm:text-sm text-zinc-600">
                 <div>
                   <p className="text-zinc-500">Nom / Email</p>
@@ -261,6 +394,7 @@ export default function CommandeDetailPage() {
               </div>
             </div>
 
+            {/* Détail des articles */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <h2 className="text-sm font-semibold tracking-tight mb-4">
                 Détail des articles

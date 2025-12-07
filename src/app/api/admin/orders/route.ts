@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       id: order.id,
       createdAt: order.createdAt,
       status: order.status,
+      shippingStatus: (order as any).shippingStatus ?? "PREPARATION",
       totalCents: order.totalCents,
       email: order.email,
       customerName: order.customerName,
