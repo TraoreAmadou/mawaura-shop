@@ -186,8 +186,9 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
+      {/* Header + nav admin */}
       <header className="border-b border-zinc-200 bg-zinc-50/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="tracking-[0.25em] uppercase text-[11px] text-zinc-500">
               MAWAURA ACCESSORIES
@@ -204,9 +205,25 @@ export default function AdminPage() {
               <span className="text-zinc-700 font-medium">Admin</span>
             </nav>
           </div>
-          <span className="inline-flex items-center rounded-full border border-zinc-900 px-3 py-1 text-[10px] uppercase tracking-[0.2em] bg-zinc-900 text-white">
-            Back-office
-          </span>
+
+          <div className="flex flex-col items-start sm:items-end gap-2">
+            <span className="inline-flex items-center rounded-full border border-zinc-900 px-3 py-1 text-[10px] uppercase tracking-[0.2em] bg-zinc-900 text-white">
+              Back-office
+            </span>
+
+            {/* 🔹 Nav interne admin : Produits / Commandes */}
+            <nav className="inline-flex items-center gap-1 rounded-full bg-white/80 border border-zinc-200 px-1 py-1 text-[11px] font-medium uppercase tracking-[0.16em]">
+              <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-3 py-1">
+                Produits
+              </span>
+              <Link
+                href="/admin/commandes"
+                className="inline-flex items-center rounded-full px-3 py-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition"
+              >
+                Commandes
+              </Link>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -352,8 +369,7 @@ export default function AdminPage() {
               />
               <p className="text-[11px] text-zinc-500">
                 Ce tag s’ajoute aux badges automatiques (stock, nouveau,
-                best-seller…). Le badge “Bientôt de retour” sera géré
-                automatiquement selon le stock.
+                best-seller…).
               </p>
             </div>
 
