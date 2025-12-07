@@ -44,6 +44,8 @@ type AdminOrder = {
   items: AdminOrderItem[];
 };
 
+type RevenueStatusFilter = "CONFIRMED" | "PENDING_AND_CONFIRMED";
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
@@ -69,6 +71,13 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  // 🔹 Filtre : quels statuts entrent dans le calcul du CA
+  const [revenueFilter, setRevenueFilter] =
+    useState<RevenueStatusFilter>("CONFIRMED");
+
+  // 🔹 Filtre d'année pour les graphiques
+  const [selectedYear, setSelectedYear] = useState<string>("ALL");
 
   const isAdmin = (session?.user as any)?.role === "ADMIN";
 
@@ -123,9 +132,7 @@ export default function AdminPage() {
       } catch (err) {
         console.error(err);
         if (!cancelled) {
-          setOrdersError(
-            "Erreur réseau lors du chargement des commandes."
-          );
+          setOrdersError("Erreur réseau lors du chargement des commandes.");
         }
       } finally {
         if (!cancelled) {
@@ -230,13 +237,112 @@ export default function AdminPage() {
     return "En stock";
   };
 
-  // 🔹 Statistiques commandes pour le dashboard
+  // 🔹 Statistiques commandes globales (peu importe filtre CA)
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.status === "PENDING").length;
-  const totalRevenue = orders.reduce(
+
+  // 🔹 Années disponibles (pour le sélecteur de période)
+  const availableYears = Array.from(
+    new Set(
+      orders.map((o) => {
+        const d = new Date(o.createdAt);
+        return d.getFullYear();
+      })
+    )
+  ).sort((a, b) => a - b);
+
+  // 🔹 Commandes prises en compte dans le CA selon le filtre de statut
+  const filteredOrdersForRevenue = orders.filter((o) => {
+    if (o.status === "CANCELLED") return false;
+    if (revenueFilter === "CONFIRMED") {
+      return o.status === "CONFIRMED";
+    }
+    // PENDING_AND_CONFIRMED
+    return o.status === "PENDING" || o.status === "CONFIRMED";
+  });
+
+  // 🔹 On applique l'éventuel filtre d'année pour les graphiques (mais pas pour les tuiles globales)
+  const revenueOrdersForCharts = filteredOrdersForRevenue.filter((o) => {
+    if (selectedYear === "ALL") return true;
+    const d = new Date(o.createdAt);
+    return String(d.getFullYear()) === selectedYear;
+  });
+
+  const totalRevenue = filteredOrdersForRevenue.reduce(
     (sum, o) => sum + o.totalCents / 100,
     0
   );
+
+  // 🔹 CA mensuel (6 derniers mois) basé sur revenueOrdersForCharts
+  const monthlyRevenueMap = new Map<string, number>();
+
+  revenueOrdersForCharts.forEach((order) => {
+    const d = new Date(order.createdAt);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0"); // 01-12
+    const key = `${year}-${month}`; // ex: 2025-03
+    const current = monthlyRevenueMap.get(key) ?? 0;
+    monthlyRevenueMap.set(key, current + order.totalCents / 100);
+  });
+
+  const monthlyRevenueArray = Array.from(monthlyRevenueMap.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .slice(-6); // 6 derniers mois
+
+  const maxMonthlyRevenue =
+    monthlyRevenueArray.reduce(
+      (max, [, value]) => (value > max ? value : max),
+      0
+    ) || 0;
+
+  const formatMonthLabel = (monthKey: string) => {
+    // monthKey = "YYYY-MM"
+    const [year, month] = monthKey.split("-");
+    const d = new Date(Number(year), Number(month) - 1, 1);
+    return d.toLocaleDateString("fr-FR", {
+      month: "short",
+      year: "2-digit",
+    });
+  };
+
+  const revenueFilterLabel =
+    revenueFilter === "CONFIRMED"
+      ? "Commandes confirmées uniquement"
+      : "En attente + confirmées (hors annulées)";
+
+  // 🔹 CA par catégorie (avec même filtre statut + année)
+  const productCategoryMap = new Map<string, string | null>();
+  products.forEach((p) => {
+    productCategoryMap.set(p.id, p.category);
+  });
+
+  const categoryRevenueMap = new Map<string, number>();
+
+  revenueOrdersForCharts.forEach((order) => {
+    order.items.forEach((item) => {
+      const categoryRaw = productCategoryMap.get(item.productId);
+      const category =
+        categoryRaw && categoryRaw.trim().length > 0
+          ? categoryRaw
+          : "Sans catégorie";
+
+      const current = categoryRevenueMap.get(category) ?? 0;
+      categoryRevenueMap.set(
+        category,
+        current + item.totalPriceCents / 100
+      );
+    });
+  });
+
+  const categoryRevenueArray = Array.from(categoryRevenueMap.entries()).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  const maxCategoryRevenue =
+    categoryRevenueArray.reduce(
+      (max, [, value]) => (value > max ? value : max),
+      0
+    ) || 0;
 
   if (status === "loading") {
     return (
@@ -345,16 +451,194 @@ export default function AdminPage() {
 
           <div className="border border-zinc-200 rounded-2xl p-4 bg-white/90">
             <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
-              CA cumulé (approx.)
+              CA cumulé (filtré)
             </p>
             {loadingOrders ? (
               <p className="text-sm text-zinc-400">Chargement...</p>
             ) : ordersError ? (
               <p className="text-xs text-red-600">{ordersError}</p>
             ) : (
-              <p className="text-2xl font-semibold text-zinc-900">
-                {totalRevenue.toFixed(2).replace(".", ",")} €
+              <>
+                <p className="text-2xl font-semibold text-zinc-900">
+                  {totalRevenue.toFixed(2).replace(".", ",")} €
+                </p>
+                <p className="mt-1 text-[10px] text-zinc-500">
+                  {revenueFilterLabel}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 🔹 Graphiques : CA mensuel + CA par catégorie */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Graphique mensuel */}
+          <div className="border border-zinc-200 rounded-2xl p-4 sm:p-5 bg-white/90">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">
+                  Évolution du CA (6 derniers mois)
+                </h2>
+                <p className="text-[11px] text-zinc-500">
+                  Basé sur les commandes selon le filtre.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                {/* Filtre de statut pour le CA */}
+                <div className="inline-flex items-center rounded-full bg-zinc-50 border border-zinc-200 px-1 py-1 text-[11px] font-medium uppercase tracking-[0.16em]">
+                  <button
+                    type="button"
+                    onClick={() => setRevenueFilter("CONFIRMED")}
+                    className={`px-3 py-1 rounded-full ${
+                      revenueFilter === "CONFIRMED"
+                        ? "bg-zinc-900 text-white"
+                        : "text-zinc-600 hover:bg-zinc-100"
+                    }`}
+                  >
+                    Confirmées
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRevenueFilter("PENDING_AND_CONFIRMED")}
+                    className={`px-3 py-1 rounded-full ${
+                      revenueFilter === "PENDING_AND_CONFIRMED"
+                        ? "bg-zinc-900 text-white"
+                        : "text-zinc-600 hover:bg-zinc-100"
+                    }`}
+                  >
+                    En attente + conf.
+                  </button>
+                </div>
+
+                {/* Sélecteur d'année */}
+                <div className="inline-flex items-center gap-1 text-[11px] text-zinc-600">
+                  <span>Période</span>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="rounded-full border border-zinc-200 bg-white px-2 py-1 text-[11px] focus:outline-none focus:border-zinc-900"
+                  >
+                    <option value="ALL">Toutes années</option>
+                    {availableYears.map((year) => (
+                      <option key={year} value={String(year)}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {loadingOrders ? (
+              <p className="text-sm text-zinc-400">
+                Chargement des données de commandes...
               </p>
+            ) : ordersError ? (
+              <p className="text-sm text-red-600">{ordersError}</p>
+            ) : monthlyRevenueArray.length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                Pas encore de commandes (avec ces filtres) pour afficher le
+                graphique.
+              </p>
+            ) : (
+              <div className="mt-2">
+                <div className="flex items-end gap-2 sm:gap-3 h-40">
+                  {monthlyRevenueArray.map(([monthKey, value]) => {
+                    const heightPercent =
+                      maxMonthlyRevenue > 0
+                        ? (value / maxMonthlyRevenue) * 100
+                        : 0;
+
+                    return (
+                      <div
+                        key={monthKey}
+                        className="flex-1 flex flex-col items-center justify-end gap-1"
+                      >
+                        <div className="flex-1 flex items-end w-full">
+                          <div
+                            className="w-full rounded-t-full bg-zinc-900/80"
+                            style={{
+                              height: `${Math.max(heightPercent, 8)}%`,
+                            }}
+                            title={`${formatMonthLabel(
+                              monthKey
+                            )} — ${value.toFixed(2).replace(".", ",")} €`}
+                          />
+                        </div>
+                        <div className="text-[10px] text-zinc-500 text-center">
+                          {formatMonthLabel(monthKey)}
+                        </div>
+                        <div className="text-[10px] text-zinc-700 text-center">
+                          {value.toFixed(0)} €
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Graphique CA par catégorie */}
+          <div className="border border-zinc-200 rounded-2xl p-4 sm:p-5 bg-white/90">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">
+                  CA par catégorie
+                </h2>
+                <p className="text-[11px] text-zinc-500">
+                  Même filtre de statut et d&apos;année que le graphique
+                  mensuel.
+                </p>
+              </div>
+            </div>
+
+            {loadingOrders ? (
+              <p className="text-sm text-zinc-400">
+                Chargement des données de commandes...
+              </p>
+            ) : ordersError ? (
+              <p className="text-sm text-red-600">{ordersError}</p>
+            ) : categoryRevenueArray.length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                Pas encore de données (avec ces filtres) pour afficher le
+                graphique.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {categoryRevenueArray.map(([category, value]) => {
+                  const widthPercent =
+                    maxCategoryRevenue > 0
+                      ? (value / maxCategoryRevenue) * 100
+                      : 0;
+
+                  return (
+                    <div
+                      key={category}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="w-24 sm:w-32 text-[10px] text-zinc-600 truncate">
+                        {category}
+                      </div>
+                      <div className="flex-1 h-4 rounded-full bg-zinc-100 overflow-hidden">
+                        <div
+                          className="h-full bg-zinc-900/80"
+                          style={{
+                            width: `${Math.max(widthPercent, 5)}%`,
+                          }}
+                          title={`${category} — ${value
+                            .toFixed(2)
+                            .replace(".", ",")} €`}
+                        />
+                      </div>
+                      <div className="w-14 text-right text-[10px] text-zinc-700">
+                        {value.toFixed(0)} €
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
