@@ -347,13 +347,17 @@ export default function PanierPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            disabled={!hasItems}
-            className="mt-5 w-full inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <Link
+            href={hasItems ? "/checkout" : "#"}
+            aria-disabled={!hasItems}
+            className={`mt-5 w-full inline-flex items-center justify-center rounded-full px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] transition-colors ${
+              hasItems
+                ? "bg-zinc-900 text-white hover:bg-zinc-800"
+                : "bg-zinc-300 text-zinc-500 cursor-not-allowed pointer-events-none"
+            }`}
           >
             Valider mon panier
-          </button>
+          </Link>
 
           <div className="mt-3 text-center">
             <Link

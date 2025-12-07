@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
   useRef,
+  useEffect,
   ReactNode,
 } from "react";
 
@@ -40,12 +41,62 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const CART_STORAGE_KEY = "mawaura_cart_v1";
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [lastAddedName, setLastAddedName] = useState<string | null>(null);
   const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+
+  // 🔁 Chargement initial du panier depuis localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+
+      const valid: CartItem[] = parsed
+        .filter((item: any) => item && typeof item.id === "string")
+        .map((item: any) => ({
+          id: String(item.id),
+          name: String(item.name ?? ""),
+          price: typeof item.price === "number" ? item.price : 0,
+          quantity:
+            typeof item.quantity === "number" && item.quantity > 0
+              ? item.quantity
+              : 1,
+          slug: item.slug ?? undefined,
+          imageUrl:
+            typeof item.imageUrl === "string" ? item.imageUrl : null,
+        }));
+
+      if (valid.length > 0) {
+        setItems(valid);
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement du panier depuis localStorage", error);
+    }
+  }, []);
+
+  // 💾 Sauvegarde du panier à chaque modification
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(
+        CART_STORAGE_KEY,
+        JSON.stringify(items)
+      );
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde du panier dans localStorage", error);
+    }
+  }, [items]);
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
