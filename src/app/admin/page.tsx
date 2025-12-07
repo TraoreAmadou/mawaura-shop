@@ -22,6 +22,28 @@ type Product = {
   createdAt: string;
 };
 
+type AdminOrderItem = {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPriceCents: number;
+  totalPriceCents: number;
+  productNameSnapshot: string;
+  productSlugSnapshot?: string | null;
+};
+
+type AdminOrder = {
+  id: string;
+  createdAt: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED";
+  totalCents: number;
+  email: string;
+  customerName?: string | null;
+  shippingAddress?: string | null;
+  notes?: string | null;
+  items: AdminOrderItem[];
+};
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,28 +65,81 @@ export default function AdminPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  // 🔹 État pour les commandes (dashboard)
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
   const isAdmin = (session?.user as any)?.role === "ADMIN";
 
   useEffect(() => {
     if (!isAdmin) return;
+
+    let cancelled = false;
+
     const fetchProducts = async () => {
       try {
         setLoadingProducts(true);
         const res = await fetch("/api/admin/products");
         const data = await res.json();
         if (!res.ok) {
-          setError(data?.error || "Erreur lors du chargement des produits.");
+          if (!cancelled) {
+            setError(data?.error || "Erreur lors du chargement des produits.");
+          }
           return;
         }
-        setProducts(data);
+        if (!cancelled) {
+          setProducts(data);
+        }
       } catch (err) {
         console.error(err);
-        setError("Erreur lors du chargement des produits.");
+        if (!cancelled) {
+          setError("Erreur lors du chargement des produits.");
+        }
       } finally {
-        setLoadingProducts(false);
+        if (!cancelled) {
+          setLoadingProducts(false);
+        }
       }
     };
+
+    const fetchOrders = async () => {
+      try {
+        setLoadingOrders(true);
+        setOrdersError(null);
+        const res = await fetch("/api/admin/orders");
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          if (!cancelled) {
+            setOrdersError(
+              data?.error || "Erreur lors du chargement des commandes."
+            );
+          }
+          return;
+        }
+        if (!cancelled) {
+          setOrders(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setOrdersError(
+            "Erreur réseau lors du chargement des commandes."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingOrders(false);
+        }
+      }
+    };
+
     fetchProducts();
+    fetchOrders();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAdmin]);
 
   const handleChange = (
@@ -155,6 +230,14 @@ export default function AdminPage() {
     return "En stock";
   };
 
+  // 🔹 Statistiques commandes pour le dashboard
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o) => o.status === "PENDING").length;
+  const totalRevenue = orders.reduce(
+    (sum, o) => sum + o.totalCents / 100,
+    0
+  );
+
   if (status === "loading") {
     return (
       <main className="min-h-screen bg-white text-zinc-900 flex items-center justify-center">
@@ -211,7 +294,7 @@ export default function AdminPage() {
               Back-office
             </span>
 
-            {/* 🔹 Nav interne admin : Produits / Commandes */}
+            {/* Nav interne admin : Produits / Commandes */}
             <nav className="inline-flex items-center gap-1 rounded-full bg-white/80 border border-zinc-200 px-1 py-1 text-[11px] font-medium uppercase tracking-[0.16em]">
               <span className="inline-flex items-center rounded-full bg-zinc-900 text-white px-3 py-1">
                 Produits
@@ -228,6 +311,54 @@ export default function AdminPage() {
       </header>
 
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
+        {/* 🔹 Mini dashboard commandes */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="border border-zinc-200 rounded-2xl p-4 bg-white/90">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
+              Commandes totales
+            </p>
+            {loadingOrders ? (
+              <p className="text-sm text-zinc-400">Chargement...</p>
+            ) : ordersError ? (
+              <p className="text-xs text-red-600">{ordersError}</p>
+            ) : (
+              <p className="text-2xl font-semibold text-zinc-900">
+                {totalOrders}
+              </p>
+            )}
+          </div>
+
+          <div className="border border-zinc-200 rounded-2xl p-4 bg-white/90">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
+              En attente
+            </p>
+            {loadingOrders ? (
+              <p className="text-sm text-zinc-400">Chargement...</p>
+            ) : ordersError ? (
+              <p className="text-xs text-red-600">{ordersError}</p>
+            ) : (
+              <p className="text-2xl font-semibold text-amber-700">
+                {pendingOrders}
+              </p>
+            )}
+          </div>
+
+          <div className="border border-zinc-200 rounded-2xl p-4 bg-white/90">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-1">
+              CA cumulé (approx.)
+            </p>
+            {loadingOrders ? (
+              <p className="text-sm text-zinc-400">Chargement...</p>
+            ) : ordersError ? (
+              <p className="text-xs text-red-600">{ordersError}</p>
+            ) : (
+              <p className="text-2xl font-semibold text-zinc-900">
+                {totalRevenue.toFixed(2).replace(".", ",")} €
+              </p>
+            )}
+          </div>
+        </div>
+
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           Gestion des bijoux
         </h1>
