@@ -1,158 +1,215 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getToken } from "next-auth/jwt";
 
-type OrderItemInput = {
-  productId: string;
-  quantity: number;
-};
-
-type CheckoutBody = {
-  items: OrderItemInput[];
-  customer?: {
-    name?: string | null;
-    email?: string | null;
-    notes?: string | null;
-    shippingAddress?: string | null;
+// Utilitaire pour formater une commande dans un format API "propre"
+function formatOrder(order: any) {
+  return {
+    id: order.id,
+    createdAt: order.createdAt,
+    status: order.status,
+    totalCents: order.totalCents,
+    email: order.email,
+    customerName: order.customerName,
+    shippingAddress: (order as any).shippingAddress ?? null,
+    notes: (order as any).notes ?? null,
+    // 🔹 IMPORTANT : inclure le statut de suivi pour le client
+    shippingStatus: (order as any).shippingStatus ?? "PREPARATION",
+    items: order.items.map((item: any) => ({
+      id: item.id,
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+      totalPriceCents: item.totalPriceCents,
+      productNameSnapshot: item.productNameSnapshot,
+      productSlugSnapshot: item.productSlugSnapshot,
+    })),
   };
-};
+}
 
-// POST /api/orders → création d'une commande
-export async function POST(req: NextRequest) {
+// GET /api/orders → liste des commandes de l'utilisateur connecté
+export async function GET(_req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user?.email) {
+    return NextResponse.json(
+      { error: "Non autorisé" },
+      { status: 401 }
+    );
+  }
+
   try {
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
+    const email = session.user.email;
 
-    const userId = token?.sub ?? null;
-
-    const body = (await req.json()) as CheckoutBody;
-
-    if (!body || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json(
-        { error: "Votre panier est vide." },
-        { status: 400 }
-      );
-    }
-
-    const normalizedItems = body.items
-      .map((item) => ({
-        productId: String(item.productId),
-        quantity: Number(item.quantity),
-      }))
-      .filter((item) => item.productId && item.quantity > 0);
-
-    if (normalizedItems.length === 0) {
-      return NextResponse.json(
-        { error: "Aucun article valide dans le panier." },
-        { status: 400 }
-      );
-    }
-
-    const productIds = [...new Set(normalizedItems.map((i) => i.productId))];
-
-    const products = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
-        isActive: true,
+    const orders = await prisma.order.findMany({
+      where: { email },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: true,
       },
     });
 
-    if (products.length === 0) {
-      return NextResponse.json(
-        { error: "Les produits de votre panier ne sont plus disponibles." },
-        { status: 400 }
-      );
-    }
+    const payload = orders.map(formatOrder);
+
+    return NextResponse.json(payload, { status: 200 });
+  } catch (error) {
+    console.error("Erreur GET /api/orders:", error);
+    return NextResponse.json(
+      { error: "Erreur lors du chargement des commandes." },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/orders → création d'une nouvelle commande à partir du panier
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user?.email) {
+    return NextResponse.json(
+      { error: "Vous devez être connecté pour passer une commande." },
+      { status: 401 }
+    );
+  }
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Corps de requête invalide." },
+      { status: 400 }
+    );
+  }
+
+  // On essaie d'être permissif sur le nom du champ contenant les lignes du panier
+  const rawItems =
+    body.items ||
+    body.cartItems ||
+    body.lines ||
+    [];
+
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return NextResponse.json(
+      { error: "Aucun article dans la commande." },
+      { status: 400 }
+    );
+  }
+
+  type IncomingItem = {
+    productId?: string;
+    id?: string;
+    quantity?: number;
+  };
+
+  const parsedItems: IncomingItem[] = rawItems.map((it: any) => ({
+    productId: it.productId ?? it.id ?? it.product?.id,
+    quantity:
+      typeof it.quantity === "number"
+        ? it.quantity
+        : Number(it.quantity ?? 0),
+  }));
+
+  if (
+    parsedItems.some(
+      (it) => !it.productId || !it.quantity || it.quantity <= 0
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Articles de commande invalides." },
+      { status: 400 }
+    );
+  }
+
+  const productIds = parsedItems.map((it) => it.productId!) as string[];
+
+  try {
+    // On récupère les produits concernés
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    // Vérifications + préparation des lignes
     let totalCents = 0;
+    const orderItemsData: any[] = [];
 
-    const orderItemsData = normalizedItems.map((item) => {
-      const product = productMap.get(item.productId);
-
-      if (!product) {
-        throw new Error(
-          "Un des produits de votre panier n'est plus disponible."
+    for (const item of parsedItems) {
+      const product = productMap.get(item.productId!);
+      if (!product || !product.isActive) {
+        return NextResponse.json(
+          { error: "Un des produits n'est plus disponible." },
+          { status: 400 }
         );
       }
 
-      if (product.stock < item.quantity) {
-        throw new Error(
-          `Stock insuffisant pour le produit "${product.name}".`
+      const quantity = item.quantity ?? 0;
+      if (quantity <= 0) {
+        return NextResponse.json(
+          { error: "Quantité invalide pour un des articles." },
+          { status: 400 }
         );
       }
 
-      const lineTotal = product.priceCents * item.quantity;
+      // Vérification du stock
+      if (product.stock < quantity) {
+        return NextResponse.json(
+          {
+            error: `Stock insuffisant pour le produit "${product.name}".`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const unitPriceCents = product.priceCents;
+      const lineTotal = unitPriceCents * quantity;
       totalCents += lineTotal;
 
-      return {
+      orderItemsData.push({
         productId: product.id,
-        quantity: item.quantity,
-        unitPriceCents: product.priceCents,
+        quantity,
+        unitPriceCents,
         totalPriceCents: lineTotal,
         productNameSnapshot: product.name,
         productSlugSnapshot: product.slug,
-      };
-    });
+      });
+    }
 
-    const emailFromSession = (token as any)?.email as string | undefined;
-    const emailFromBody = body.customer?.email ?? undefined;
-    const email = emailFromSession ?? emailFromBody;
-
-    if (!email) {
+    if (totalCents <= 0) {
       return NextResponse.json(
-        {
-          error:
-            "Une adresse email est requise pour valider la commande (pour l'envoi de la confirmation).",
-        },
+        { error: "Montant de commande invalide." },
         { status: 400 }
       );
     }
 
+    const email = session.user.email!;
     const customerName =
-      body.customer?.name ??
-      ((token as any)?.name as string | undefined) ??
-      null;
+      body.customerName || (session.user as any).name || null;
 
-    const shippingAddress = body.customer?.shippingAddress ?? null;
-    const notes = body.customer?.notes ?? null;
+    const shippingAddress =
+      typeof body.shippingAddress === "string" &&
+      body.shippingAddress.trim().length > 0
+        ? body.shippingAddress.trim()
+        : null;
 
-    const order = await prisma.$transaction(async (tx) => {
-      // Mise à jour des stocks (avec protection concurrente)
-      for (const item of normalizedItems) {
-        const product = productMap.get(item.productId)!;
+    const notes =
+      typeof body.notes === "string" && body.notes.trim().length > 0
+        ? body.notes.trim()
+        : null;
 
-        const result = await tx.product.updateMany({
-          where: {
-            id: product.id,
-            stock: { gte: item.quantity },
-            isActive: true,
-          },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
-
-        if (result.count === 0) {
-          throw new Error(
-            `Le stock du produit "${product.name}" a changé, veuillez actualiser votre panier.`
-          );
-        }
-      }
-
-      // Création de la commande + lignes
-      const created = await tx.order.create({
+    // Création de la commande + décrémentation du stock dans une transaction
+    const createdOrder = await prisma.$transaction(async (tx) => {
+      // Création de la commande
+      const order = await tx.order.create({
         data: {
-          userId,
           email,
           customerName,
           totalCents,
           status: "PENDING",
+          // 🔹 On initialise bien le suivi à PREPARATION
+          shippingStatus: "PREPARATION",
           shippingAddress,
           notes,
           items: {
@@ -164,75 +221,29 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return created;
+      // Décrémentation du stock
+      for (const item of orderItemsData) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      }
+
+      return order;
     });
 
+    const payload = formatOrder(createdOrder);
+
+    return NextResponse.json(payload, { status: 201 });
+  } catch (error) {
+    console.error("Erreur POST /api/orders:", error);
     return NextResponse.json(
-      {
-        id: order.id,
-        status: order.status,
-        totalCents: order.totalCents,
-        createdAt: order.createdAt,
-      },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error("Erreur création commande:", error);
-
-    const message =
-      typeof error?.message === "string" && error.message.length < 200
-        ? error.message
-        : "Une erreur est survenue lors de la création de la commande.";
-
-    // Souvent ce sera des erreurs de stock ou de produit indisponible → 400
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
-}
-
-// GET /api/orders → commandes de l'utilisateur connecté
-export async function GET(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
-  if (!token || !token.sub) {
-    return NextResponse.json(
-      {
-        error:
-          "Vous devez être connecté pour consulter vos commandes.",
-      },
-      { status: 401 }
+      { error: "Erreur lors de la création de la commande." },
+      { status: 500 }
     );
   }
-
-  const userId = token.sub;
-
-  const orders = await prisma.order.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: true,
-    },
-  });
-
-  const formatted = orders.map((order) => ({
-    id: order.id,
-    createdAt: order.createdAt,
-    status: order.status,
-    totalCents: order.totalCents,
-    email: order.email,
-    customerName: order.customerName,
-    items: order.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      quantity: item.quantity,
-      unitPriceCents: item.unitPriceCents,
-      totalPriceCents: item.totalPriceCents,
-      productNameSnapshot: item.productNameSnapshot,
-      productSlugSnapshot: item.productSlugSnapshot,
-    })),
-  }));
-
-  return NextResponse.json(formatted);
 }
