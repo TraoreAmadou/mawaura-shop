@@ -24,6 +24,7 @@ enum ShippingStatus {
   PREPARATION
   SHIPPED
   DELIVERED
+  RECEIVED   // 🔹 Nouvel état : colis reçu
 }
 
 

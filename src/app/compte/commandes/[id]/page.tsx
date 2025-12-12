@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED";
+type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
 
 type ApiOrderItem = {
   id: string;
@@ -27,7 +27,6 @@ type ApiOrder = {
   items: ApiOrderItem[];
   shippingAddress?: string | null;
   notes?: string | null;
-  // 🔹 Nouveau champ (optionnel pour rester compatible avec l'existant)
   shippingStatus?: ShippingStatus;
 };
 
@@ -54,20 +53,7 @@ function getStatusBadge(status: ApiOrder["status"]) {
   }
 }
 
-// 🔹 Helpers suivi logistique
-
-function shippingStatusLabel(status: ShippingStatus): string {
-  switch (status) {
-    case "PREPARATION":
-      return "En préparation";
-    case "SHIPPED":
-      return "Expédiée";
-    case "DELIVERED":
-      return "Livrée";
-    default:
-      return "En préparation";
-  }
-}
+// Helpers suivi logistique
 
 function shippingStatusDescription(status: ShippingStatus): string {
   switch (status) {
@@ -76,7 +62,9 @@ function shippingStatusDescription(status: ShippingStatus): string {
     case "SHIPPED":
       return "Votre commande a été expédiée. Elle est en route jusqu’à vous.";
     case "DELIVERED":
-      return "Votre commande a été livrée. Merci pour votre confiance ✨";
+      return "Votre commande a été livrée. Elle devrait vous parvenir très bientôt.";
+    case "RECEIVED":
+      return "Votre colis a été reçu. Nous espérons que vos bijoux vous plaisent ✨";
     default:
       return "";
   }
@@ -90,6 +78,9 @@ function shippingStepIndex(status: ShippingStatus): number {
       return 1;
     case "DELIVERED":
       return 2;
+    case "RECEIVED":
+      // 🔹 Toutes les étapes sont considérées comme complétées
+      return 3;
     default:
       return 0;
   }
@@ -119,9 +110,11 @@ function ShippingStepper({ status }: { status: ShippingStatus }) {
           let labelClass = "text-zinc-400";
 
           if (isDone) {
+            // Étapes terminées → vert
             circleClass = "bg-emerald-600 text-white";
             labelClass = "text-emerald-700";
           } else if (isCurrent) {
+            // Étape courante → noir
             circleClass = "bg-zinc-900 text-white";
             labelClass = "text-zinc-900";
           }
@@ -182,8 +175,6 @@ export default function CommandeDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        // 🔹 On garde ton comportement : on récupère TOUTES les commandes
-        // puis on filtre côté front.
         const res = await fetch("/api/orders");
         if (!res.ok) {
           const data = await res.json().catch(() => null);
@@ -203,7 +194,6 @@ export default function CommandeDetailPage() {
           if (!found) {
             setError("Commande introuvable.");
           } else {
-            // 🔹 On force un shippingStatus par défaut si l'API ne le renvoie pas
             const ss =
               (found.shippingStatus as ShippingStatus | undefined) ||
               "PREPARATION";
@@ -306,7 +296,7 @@ export default function CommandeDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Bloc résumé + statut + suivi */}
+            {/* Résumé + suivi */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -355,7 +345,7 @@ export default function CommandeDetailPage() {
                 </div>
               </div>
 
-              {/* 🔹 Suivi logistique */}
+              {/* Suivi logistique */}
               <div className="mt-4">
                 <p className="text-xs font-medium text-zinc-700 mb-1">
                   Suivi de votre commande

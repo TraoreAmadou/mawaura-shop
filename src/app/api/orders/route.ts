@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-// Utilitaire pour formater une commande dans un format API "propre"
+// Utilitaire pour formater une commande pour l'API
 function formatOrder(order: any) {
   return {
     id: order.id,
@@ -14,7 +14,6 @@ function formatOrder(order: any) {
     customerName: order.customerName,
     shippingAddress: (order as any).shippingAddress ?? null,
     notes: (order as any).notes ?? null,
-    // 🔹 IMPORTANT : inclure le statut de suivi pour le client
     shippingStatus: (order as any).shippingStatus ?? "PREPARATION",
     items: order.items.map((item: any) => ({
       id: item.id,
@@ -62,7 +61,7 @@ export async function GET(_req: NextRequest) {
   }
 }
 
-// POST /api/orders → création d'une nouvelle commande à partir du panier
+// POST /api/orders → création d'une nouvelle commande
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // On essaie d'être permissif sur le nom du champ contenant les lignes du panier
+  // On essaie d'être permissif sur la structure du panier reçue
   const rawItems =
     body.items ||
     body.cartItems ||
@@ -125,14 +124,13 @@ export async function POST(req: NextRequest) {
   const productIds = parsedItems.map((it) => it.productId!) as string[];
 
   try {
-    // On récupère les produits concernés
+    // 1️⃣ On récupère les vrais produits en base (prix, stock, isActive)
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
     });
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Vérifications + préparation des lignes
     let totalCents = 0;
     const orderItemsData: any[] = [];
 
@@ -153,7 +151,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Vérification du stock
+      // 2️⃣ On revérifie le stock en base (empêche commande si hors stock)
       if (product.stock < quantity) {
         return NextResponse.json(
           {
@@ -163,6 +161,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // 3️⃣ On ignore tout prix venant du client → on utilise le prix en BDD
       const unitPriceCents = product.priceCents;
       const lineTotal = unitPriceCents * quantity;
       totalCents += lineTotal;
@@ -199,17 +198,15 @@ export async function POST(req: NextRequest) {
         ? body.notes.trim()
         : null;
 
-    // Création de la commande + décrémentation du stock dans une transaction
+    // 4️⃣ Transaction : création commande + décrément du stock
     const createdOrder = await prisma.$transaction(async (tx) => {
-      // Création de la commande
       const order = await tx.order.create({
         data: {
           email,
           customerName,
           totalCents,
-          status: "PENDING",
-          // 🔹 On initialise bien le suivi à PREPARATION
-          shippingStatus: "PREPARATION",
+          status: "PENDING",          // statut admin
+          shippingStatus: "PREPARATION", // suivi logistique
           shippingAddress,
           notes,
           items: {
@@ -221,7 +218,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Décrémentation du stock
+      // Décrément du stock pour chaque produit
       for (const item of orderItemsData) {
         await tx.product.update({
           where: { id: item.productId },

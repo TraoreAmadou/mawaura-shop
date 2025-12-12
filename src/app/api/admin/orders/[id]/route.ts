@@ -79,7 +79,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/admin/orders/:id → mise à jour statut & suivi
+// PATCH /api/admin/orders/:id → mise à jour statut & suivi (+ gestion stock)
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -100,7 +100,7 @@ export async function PATCH(
 
   let body: {
     status?: "PENDING" | "CONFIRMED" | "CANCELLED";
-    shippingStatus?: "PREPARATION" | "SHIPPED" | "DELIVERED";
+    shippingStatus?: "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
     notes?: string | null;
     shippingAddress?: string | null;
   };
@@ -128,7 +128,12 @@ export async function PATCH(
   }
 
   if (body.shippingStatus) {
-    const allowedShipping = ["PREPARATION", "SHIPPED", "DELIVERED"] as const;
+    const allowedShipping = [
+      "PREPARATION",
+      "SHIPPED",
+      "DELIVERED",
+      "RECEIVED",
+    ] as const;
     if (!allowedShipping.includes(body.shippingStatus)) {
       return NextResponse.json(
         { error: "Statut de suivi invalide." },
@@ -154,22 +159,75 @@ export async function PATCH(
   }
 
   try {
-    const updated = await prisma.order.update({
-      where: { id },
-      data: updates,
+    const result = await prisma.$transaction(async (tx) => {
+      // On récupère la commande actuelle AVEC ses items
+      const existing = await tx.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
+
+      const previousStatus = existing.status as
+        | "PENDING"
+        | "CONFIRMED"
+        | "CANCELLED";
+      const previousShipping =
+        ((existing as any).shippingStatus as
+          | "PREPARATION"
+          | "SHIPPED"
+          | "DELIVERED"
+          | "RECEIVED"
+          | null) ?? "PREPARATION";
+
+      // Mise à jour de la commande
+      const updated = await tx.order.update({
+        where: { id },
+        data: updates,
+      });
+
+      // Si on passe en CANCELLED et qu'on n'était pas déjà annulé
+      // ET que la commande n'a pas été expédiée/livrée/reçue → on recrédite le stock
+      if (
+        body.status === "CANCELLED" &&
+        previousStatus !== "CANCELLED" &&
+        !["SHIPPED", "DELIVERED", "RECEIVED"].includes(previousShipping)
+      ) {
+        for (const item of existing.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                increment: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      return updated;
     });
 
     return NextResponse.json(
       {
-        id: updated.id,
-        status: updated.status,
-        shippingStatus: (updated as any).shippingStatus ?? "PREPARATION",
-        notes: (updated as any).notes ?? null,
-        shippingAddress: (updated as any).shippingAddress ?? null,
+        id: result.id,
+        status: result.status,
+        shippingStatus: (result as any).shippingStatus ?? "PREPARATION",
+        notes: (result as any).notes ?? null,
+        shippingAddress: (result as any).shippingAddress ?? null,
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Error && error.message === "NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Commande introuvable." },
+        { status: 404 }
+      );
+    }
+
     console.error("Erreur mise à jour commande admin:", error);
     return NextResponse.json(
       { error: "Erreur lors de la mise à jour de la commande." },

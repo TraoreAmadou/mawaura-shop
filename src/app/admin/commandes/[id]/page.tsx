@@ -15,7 +15,7 @@ type AdminOrderItem = {
   productSlugSnapshot?: string | null;
 };
 
-type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED";
+type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
 
 type AdminOrder = {
   id: string;
@@ -61,6 +61,8 @@ function getShippingLabel(status: ShippingStatus): string {
       return "Expédiée";
     case "DELIVERED":
       return "Livrée";
+    case "RECEIVED":
+      return "Colis reçu";
     default:
       return "En préparation";
   }
@@ -111,7 +113,7 @@ export default function AdminOrderDetailPage() {
           const o = data as AdminOrder;
           setOrder({
             ...o,
-            shippingStatus: o.shippingStatus || "PREPARATION",
+            shippingStatus: (o.shippingStatus as ShippingStatus) || "PREPARATION",
           });
         }
       } catch (err) {
@@ -281,7 +283,7 @@ export default function AdminOrderDetailPage() {
           </div>
         ) : (
           <>
-            {/* Bloc infos principales */}
+            {/* Infos principales */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -343,7 +345,7 @@ export default function AdminOrderDetailPage() {
               </div>
             </div>
 
-            {/* Bloc actions statut commande (paiement / admin) */}
+            {/* Statut administratif */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <h2 className="text-sm font-semibold tracking-tight mb-3">
                 Statut administratif de la commande
@@ -397,14 +399,14 @@ export default function AdminOrderDetailPage() {
               )}
             </div>
 
-            {/* Bloc suivi de commande (logistique) */}
+            {/* Suivi logistique */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <h2 className="text-sm font-semibold tracking-tight mb-3">
                 Suivi logistique de la commande
               </h2>
               <p className="text-xs text-zinc-600 mb-4">
                 Faites avancer la commande dans le parcours client : préparation,
-                expédition, livraison.
+                expédition, livraison, puis confirmation de réception.
               </p>
 
               <div className="flex flex-wrap gap-2 mb-3">
@@ -450,6 +452,20 @@ export default function AdminOrderDetailPage() {
                 >
                   Livrée
                 </button>
+                <button
+                  type="button"
+                  disabled={
+                    savingShipping || order.shippingStatus === "RECEIVED"
+                  }
+                  onClick={() => updateShippingStatus("RECEIVED")}
+                  className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] ${
+                    order.shippingStatus === "RECEIVED"
+                      ? "bg-emerald-600 border-emerald-700 text-white"
+                      : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  Colis reçu
+                </button>
               </div>
 
               {savingShipping && (
@@ -459,12 +475,13 @@ export default function AdminOrderDetailPage() {
               )}
 
               <p className="text-[11px] text-zinc-500 mt-2">
-                Ce statut est visible par le client dans son espace “Mes
-                commandes”.
+                Le statut “Colis reçu” peut être utilisé lorsque le client
+                confirme la bonne réception (par exemple après un échange avec
+                lui).
               </p>
             </div>
 
-            {/* Détail des articles */}
+            {/* Articles */}
             <div className="border border-zinc-200 rounded-3xl p-5 sm:p-6 bg-white/80">
               <h2 className="text-sm font-semibold tracking-tight mb-3">
                 Articles de la commande
