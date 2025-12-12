@@ -78,6 +78,26 @@ export default function PanierPage() {
     fetchProducts();
   }, []);
 
+  // Helpers de synchronisation panier / stock
+  const productForItem = (id: string | number) =>
+    products.find((p) => p.id === String(id));
+
+  const hasOutOfStockItems =
+    hasItems &&
+    items.some((item) => {
+      const p = productForItem(item.id);
+      return p && (!p.isActive || p.stock <= 0);
+    });
+
+  const hasQuantityAboveStock =
+    hasItems &&
+    items.some((item) => {
+      const p = productForItem(item.id);
+      return p && p.stock > 0 && item.quantity > p.stock;
+    });
+
+  const hasCartIssues = hasOutOfStockItems || hasQuantityAboveStock;
+
   return (
     <main className="min-h-screen bg-white text-zinc-900">
       {/* Bandeau haut */}
@@ -94,6 +114,11 @@ export default function PanierPage() {
               <p className="text-sm sm:text-base text-zinc-600">
                 Retrouvez ici les bijoux que vous avez ajoutés à votre panier.
               </p>
+              {loadingProducts && hasItems && (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Vérification de la disponibilité des bijoux en cours...
+                </p>
+              )}
             </div>
             <nav className="text-[11px] sm:text-xs text-zinc-500">
               <Link href="/" className="hover:text-zinc-800">
@@ -196,6 +221,14 @@ export default function PanierPage() {
 
                 const lineTotal = item.price * item.quantity;
 
+                const isOutOfStock =
+                  product && (!product.isActive || product.stock <= 0);
+
+                const isQuantityAboveStock =
+                  product &&
+                  product.stock > 0 &&
+                  item.quantity > product.stock;
+
                 return (
                   <article
                     key={item.id}
@@ -248,6 +281,21 @@ export default function PanierPage() {
                                 </span>
                               ))}
                             </div>
+                          )}
+
+                          {/* Messages de synchro stock */}
+                          {isOutOfStock && (
+                            <p className="mt-1 text-[11px] text-red-600">
+                              Ce bijou n&apos;est plus disponible actuellement.
+                              Vous pouvez le retirer de votre panier.
+                            </p>
+                          )}
+                          {isQuantityAboveStock && !isOutOfStock && (
+                            <p className="mt-1 text-[11px] text-amber-700">
+                              La quantité demandée dépasse le stock disponible (
+                              {product?.stock} en stock). Merci de diminuer la
+                              quantité avant de valider la commande.
+                            </p>
                           )}
                         </div>
                         <button
@@ -345,13 +393,23 @@ export default function PanierPage() {
               Les frais de livraison seront ajoutés lors de la validation de
               commande.
             </p>
+
+            {hasCartIssues && (
+              <div className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <p>
+                  Certains bijoux ne sont plus disponibles ou en quantité
+                  suffisante. Merci d&apos;ajuster votre panier avant de
+                  continuer.
+                </p>
+              </div>
+            )}
           </div>
 
           <Link
-            href={hasItems ? "/checkout" : "#"}
-            aria-disabled={!hasItems}
+            href={hasItems && !hasCartIssues ? "/checkout" : "#"}
+            aria-disabled={!hasItems || hasCartIssues}
             className={`mt-5 w-full inline-flex items-center justify-center rounded-full px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] transition-colors ${
-              hasItems
+              hasItems && !hasCartIssues
                 ? "bg-zinc-900 text-white hover:bg-zinc-800"
                 : "bg-zinc-300 text-zinc-500 cursor-not-allowed pointer-events-none"
             }`}
