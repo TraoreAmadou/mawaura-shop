@@ -9,6 +9,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 
 type CartItem = {
   id: string;
@@ -39,64 +40,27 @@ type CartContextType = {
   lastAddedName: string | null;
 };
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+type ServerCartItem = {
+  productId: string;
+  quantity: number;
+  name: string;
+  slug: string;
+  priceCents: number;
+  mainImageUrl?: string | null;
+};
 
-const CART_STORAGE_KEY = "mawaura_cart_v1";
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [lastAddedName, setLastAddedName] = useState<string | null>(null);
-  const lastAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const lastAddedTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 🔁 Chargement initial du panier depuis localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated" && !!session?.user?.email;
 
-    try {
-      const raw = window.localStorage.getItem(CART_STORAGE_KEY);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-
-      const valid: CartItem[] = parsed
-        .filter((item: any) => item && typeof item.id === "string")
-        .map((item: any) => ({
-          id: String(item.id),
-          name: String(item.name ?? ""),
-          price: typeof item.price === "number" ? item.price : 0,
-          quantity:
-            typeof item.quantity === "number" && item.quantity > 0
-              ? item.quantity
-              : 1,
-          slug: item.slug ?? undefined,
-          imageUrl:
-            typeof item.imageUrl === "string" ? item.imageUrl : null,
-        }));
-
-      if (valid.length > 0) {
-        setItems(valid);
-      }
-    } catch (error) {
-      console.error("Erreur lors du chargement du panier depuis localStorage", error);
-    }
-  }, []);
-
-  // 💾 Sauvegarde du panier à chaque modification
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      window.localStorage.setItem(
-        CART_STORAGE_KEY,
-        JSON.stringify(items)
-      );
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde du panier dans localStorage", error);
-    }
-  }, [items]);
+  const [hasLoadedFromServer, setHasLoadedFromServer] = useState(false);
 
   const normalizePrice = (price: number | string): number => {
     if (typeof price === "number") return price;
@@ -109,6 +73,88 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return Number.isNaN(parsed) ? 0 : parsed;
   };
 
+  // 🔹 Chargement du panier depuis le serveur à la connexion
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHasLoadedFromServer(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFromServer = async () => {
+      try {
+        const res = await fetch("/api/cart", { cache: "no-store" });
+        if (!res.ok) {
+          console.error("Erreur chargement panier serveur");
+          return;
+        }
+
+        const data = (await res.json()) as ServerCartItem[];
+        if (cancelled) return;
+
+        const mapped: CartItem[] = data.map((it) => ({
+          id: it.productId,
+          name: it.name,
+          price: it.priceCents / 100,
+          quantity: it.quantity,
+          slug: it.slug,
+          imageUrl: it.mainImageUrl ?? null,
+        }));
+
+        setItems(mapped);
+      } catch (error) {
+        console.error("Erreur chargement panier serveur:", error);
+      } finally {
+        if (!cancelled) {
+          setHasLoadedFromServer(true);
+        }
+      }
+    };
+
+    loadFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  // 🔹 Synchronisation du panier vers le serveur quand il change
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!hasLoadedFromServer) return;
+
+    const controller = new AbortController();
+
+    const syncToServer = async () => {
+      try {
+        const payload = {
+          items: items.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+          })),
+        };
+
+        await fetch("/api/cart", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          console.error("Erreur synchronisation panier:", error);
+        }
+      }
+    };
+
+    syncToServer();
+
+    return () => {
+      controller.abort();
+    };
+  }, [items, isAuthenticated, hasLoadedFromServer]);
+
   const addItem = (item: AddItemInput) => {
     const id = String(item.id);
     const price = normalizePrice(item.price);
@@ -117,9 +163,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = prev.find((p) => p.id === id);
       if (existing) {
         return prev.map((p) =>
-          p.id === id
-            ? { ...p, quantity: p.quantity + 1 }
-            : p
+          p.id === id ? { ...p, quantity: p.quantity + 1 } : p
         );
       }
       return [

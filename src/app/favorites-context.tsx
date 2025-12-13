@@ -8,6 +8,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 
 type FavoriteItem = {
   id: string;
@@ -27,65 +28,103 @@ type FavoritesContextType = {
   totalFavorites: number;
 };
 
+type ServerFavoriteItem = {
+  productId: string;
+  slug: string;
+  name: string;
+  priceCents: number;
+  category?: string | null;
+  mainImageUrl?: string | null;
+};
+
 const FavoritesContext = createContext<FavoritesContextType | undefined>(
   undefined
 );
 
-const FAVORITES_STORAGE_KEY = "mawaura_favorites_v1";
-
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<FavoriteItem[]>([]);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated" && !!session?.user?.email;
+  const [hasLoadedFromServer, setHasLoadedFromServer] = useState(false);
 
-  // 🔁 Chargement initial des favoris
+  // 🔹 Chargement depuis le serveur
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isAuthenticated) {
+      setHasLoadedFromServer(false);
+      return;
+    }
 
-    try {
-      const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
-      if (!raw) return;
+    let cancelled = false;
 
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
+    const loadFromServer = async () => {
+      try {
+        const res = await fetch("/api/favorites", { cache: "no-store" });
+        if (!res.ok) {
+          console.error("Erreur chargement favoris serveur");
+          return;
+        }
 
-      const valid: FavoriteItem[] = parsed
-        .filter((item: any) => item && typeof item.id === "string")
-        .map((item: any) => ({
-          id: String(item.id),
-          slug: String(item.slug ?? ""),
-          name: String(item.name ?? ""),
-          price: typeof item.price === "number" ? item.price : 0,
-          category: item.category ?? null,
-          imageUrl:
-            typeof item.imageUrl === "string" ? item.imageUrl : null,
+        const data = (await res.json()) as ServerFavoriteItem[];
+        if (cancelled) return;
+
+        const mapped: FavoriteItem[] = data.map((it) => ({
+          id: it.productId,
+          slug: it.slug,
+          name: it.name,
+          price: it.priceCents / 100,
+          category: it.category ?? null,
+          imageUrl: it.mainImageUrl ?? null,
         }));
 
-      if (valid.length > 0) {
-        setItems(valid);
+        setItems(mapped);
+      } catch (error) {
+        console.error("Erreur chargement favoris serveur:", error);
+      } finally {
+        if (!cancelled) {
+          setHasLoadedFromServer(true);
+        }
       }
-    } catch (error) {
-      console.error(
-        "Erreur lors du chargement des favoris depuis localStorage",
-        error
-      );
-    }
-  }, []);
+    };
 
-  // 💾 Sauvegarde des favoris à chaque modification
+    loadFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  // 🔹 Synchronisation vers le serveur
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isAuthenticated) return;
+    if (!hasLoadedFromServer) return;
 
-    try {
-      window.localStorage.setItem(
-        FAVORITES_STORAGE_KEY,
-        JSON.stringify(items)
-      );
-    } catch (error) {
-      console.error(
-        "Erreur lors de la sauvegarde des favoris dans localStorage",
-        error
-      );
-    }
-  }, [items]);
+    const controller = new AbortController();
+
+    const syncToServer = async () => {
+      try {
+        const payload = {
+          productIds: items.map((item) => item.id),
+        };
+
+        await fetch("/api/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          console.error("Erreur synchronisation favoris:", error);
+        }
+      }
+    };
+
+    syncToServer();
+
+    return () => {
+      controller.abort();
+    };
+  }, [items, isAuthenticated, hasLoadedFromServer]);
 
   const isFavorite = (id: string) => items.some((item) => item.id === id);
 
