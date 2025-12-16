@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "./cart-context";
 import { useFavorites } from "./favorites-context";
+import { formatXOF } from "@/lib/money";
+
 
 type HomeProduct = {
   id: string;
@@ -364,7 +366,8 @@ export default function Home() {
 
                         <div className="mt-1 flex items-center justify-between">
                           <p className="text-sm font-semibold text-zinc-900">
-                            {product.price.toFixed(2).replace(".", ",")} €
+                            {/*product.price.toFixed(2).replace(".", ",")} € donc en euro*/}
+                            {formatXOF(product.price)}
                           </p>
                         </div>
 

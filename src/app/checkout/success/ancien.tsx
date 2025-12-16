@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "../../cart-context";
 import { formatXOF } from "@/lib/money";
+import { parseXOF } from "@/lib/money";
 
 type RecoProduct = {
   id: string;
   slug: string;
   name: string;
-  price: number | string; // comme /api/products
+  price: number | string; // prix en euros, comme dans /api/products
   category: string | null;
   mainImageUrl?: string | null;
   isFeatured?: boolean;
@@ -20,86 +20,13 @@ type RecoProduct = {
   isActive?: boolean;
 };
 
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "UNKNOWN";
-
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const token = searchParams.get("token"); // PayDunya ajoute token au return_url
-
   const hasOrderId = !!orderId;
-
-  const { clearCart } = useCart();
-
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("PENDING");
-  const [confirmLoading, setConfirmLoading] = useState(true);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const [recommendations, setRecommendations] = useState<RecoProduct[]>([]);
   const [loadingReco, setLoadingReco] = useState(true);
-
-  const clearedOnce = useRef(false);
-
-  // ✅ Confirmer paiement côté serveur (PayDunya) + vider panier si PAID
-  useEffect(() => {
-    let cancelled = false;
-
-    const confirmPayment = async () => {
-      try {
-        setConfirmLoading(true);
-        setConfirmError(null);
-
-        if (!token) {
-          // Cas rare : si PayDunya ne renvoie pas token (ou URL modifiée)
-          setPaymentStatus("UNKNOWN");
-          return;
-        }
-
-        const qs = new URLSearchParams();
-        qs.set("token", token);
-        if (orderId) qs.set("orderId", orderId);
-
-        const res = await fetch(`/api/payments/paydunya/confirm?${qs.toString()}`, {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          const msg = data?.error || "Impossible de confirmer votre paiement.";
-          if (!cancelled) setConfirmError(msg);
-          if (!cancelled) setPaymentStatus("UNKNOWN");
-          return;
-        }
-
-        const status = (data?.paymentStatus as PaymentStatus) || "UNKNOWN";
-
-        if (!cancelled) {
-          setPaymentStatus(status);
-
-          if (status === "PAID" && !clearedOnce.current) {
-            clearedOnce.current = true;
-            clearCart();
-          }
-        }
-      } catch (err) {
-        console.error("Erreur confirmation PayDunya:", err);
-        if (!cancelled) {
-          setConfirmError("Une erreur réseau est survenue lors de la confirmation.");
-          setPaymentStatus("UNKNOWN");
-        }
-      } finally {
-        if (!cancelled) setConfirmLoading(false);
-      }
-    };
-
-    confirmPayment();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, orderId, clearCart]);
 
   // Chargement des produits recommandés
   useEffect(() => {
@@ -111,11 +38,15 @@ export default function CheckoutSuccessPage() {
         const res = await fetch("/api/products", { cache: "no-store" });
         const data = await res.json().catch(() => []);
 
-        if (!res.ok || !Array.isArray(data)) return;
+        if (!res.ok || !Array.isArray(data)) {
+          return;
+        }
+
         if (cancelled) return;
 
         const products = data as RecoProduct[];
 
+        // On privilégie les produits mis en avant / best-seller / nouveaux
         const highlighted = products.filter(
           (p) =>
             (p.isActive ?? true) &&
@@ -124,9 +55,12 @@ export default function CheckoutSuccessPage() {
 
         let recos = highlighted.slice(0, 4);
 
+        // Si pas assez de produits "highlighted", on complète avec des produits actifs
         if (recos.length < 4) {
           const more = products.filter(
-            (p) => (p.isActive ?? true) && !recos.some((r) => r.id === p.id)
+            (p) =>
+              (p.isActive ?? true) &&
+              !recos.some((r) => r.id === p.id)
           );
           recos = [...recos, ...more].slice(0, 4);
         }
@@ -147,54 +81,16 @@ export default function CheckoutSuccessPage() {
   }, []);
 
   // Normalisation du prix (au cas où ce serait une string)
-  const getPrice = (p: RecoProduct) => {
+  const getPriceEuros = (p: RecoProduct) => {
     if (typeof p.price === "number") return p.price;
     const n = Number(
       String(p.price)
-        .replace(/(FCFA|XOF|CFA|F)/gi, "")
-        .replace("€", "")
+        .replace("FCFA", "")
         .replace(",", ".")
         .trim()
     );
     return Number.isNaN(n) ? 0 : n;
   };
-
-  const paymentBadge = (() => {
-    if (confirmLoading) {
-      return {
-        label: "Confirmation du paiement…",
-        className:
-          "inline-flex items-center gap-1 rounded-full bg-zinc-50 text-zinc-700 border border-zinc-200 px-2 py-0.5 text-[10px] font-medium",
-      };
-    }
-    switch (paymentStatus) {
-      case "PAID":
-        return {
-          label: "Paiement confirmé",
-          className:
-            "inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-medium",
-        };
-      case "PENDING":
-        return {
-          label: "Paiement en attente",
-          className:
-            "inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-medium",
-        };
-      case "CANCELLED":
-      case "FAILED":
-        return {
-          label: "Paiement non validé",
-          className:
-            "inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 text-[10px] font-medium",
-        };
-      default:
-        return {
-          label: "Statut paiement inconnu",
-          className:
-            "inline-flex items-center gap-1 rounded-full bg-zinc-50 text-zinc-700 border border-zinc-200 px-2 py-0.5 text-[10px] font-medium",
-        };
-    }
-  })();
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
@@ -207,10 +103,11 @@ export default function CheckoutSuccessPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-                Merci 🌿
+                Merci pour votre commande 🌿
               </h1>
               <p className="text-sm sm:text-base text-zinc-600">
-                Nous confirmons votre paiement et finalisons votre commande.
+                Votre commande a bien été enregistrée. Vous allez recevoir un
+                récapitulatif par email.
               </p>
             </div>
             <nav className="text-[11px] sm:text-xs text-zinc-500">
@@ -218,7 +115,9 @@ export default function CheckoutSuccessPage() {
                 Accueil
               </Link>
               <span className="mx-1">/</span>
-              <span className="text-zinc-800 font-medium">Confirmation</span>
+              <span className="text-zinc-800 font-medium">
+                Confirmation
+              </span>
             </nav>
           </div>
         </div>
@@ -233,33 +132,23 @@ export default function CheckoutSuccessPage() {
           </div>
 
           <h2 className="text-lg sm:text-xl font-semibold tracking-tight">
-            Confirmation de paiement
+            Votre commande est en préparation
           </h2>
-
-          <div className="flex justify-center">
-            <span className={paymentBadge.className}>
-              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-              <span>{paymentBadge.label}</span>
-            </span>
-          </div>
-
-          {confirmError && (
-            <div className="border border-red-200 bg-red-50/70 text-red-700 rounded-2xl px-4 py-3 text-sm">
-              {confirmError}
-            </div>
-          )}
 
           {hasOrderId ? (
             <p className="text-sm sm:text-base text-zinc-600">
               Numéro de commande :{" "}
-              <span className="font-mono text-zinc-900">{orderId}</span>
+              <span className="font-mono text-zinc-900">
+                {orderId}
+              </span>
               <br />
               Vous pouvez suivre l&apos;état de votre commande depuis votre
               espace compte.
             </p>
           ) : (
             <p className="text-sm sm:text-base text-zinc-600">
-              Vous pouvez retrouver vos commandes et leur suivi dans votre espace compte.
+              Vous pouvez retrouver vos commandes et leur suivi dans votre
+              espace compte.
             </p>
           )}
 
@@ -281,6 +170,7 @@ export default function CheckoutSuccessPage() {
               </Link>
             )}
 
+            {/* Bouton "Continuer mes achats" */}
             <Link
               href="/boutique"
               className="inline-flex items-center justify-center rounded-full border border-zinc-900 bg-white px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-900 hover:bg-zinc-900 hover:text-white transition"
@@ -289,19 +179,10 @@ export default function CheckoutSuccessPage() {
             </Link>
           </div>
 
-          {(paymentStatus === "FAILED" || paymentStatus === "CANCELLED") && (
-            <div className="pt-2">
-              <Link
-                href="/checkout"
-                className="text-[11px] text-zinc-600 hover:text-zinc-900 underline underline-offset-2"
-              >
-                Réessayer le paiement →
-              </Link>
-            </div>
-          )}
-
           <p className="mt-4 text-[11px] text-zinc-500">
-            Si vous avez la moindre question, contactez-nous depuis la page contact.
+            Si vous avez la moindre question, vous pouvez répondre directement à
+            l&apos;email de confirmation ou nous contacter depuis la page
+            contact.
           </p>
         </div>
 
@@ -314,14 +195,15 @@ export default function CheckoutSuccessPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {recommendations.map((product) => {
-                const price = getPrice(product);
-
+                // const priceEuros = getPriceEuros(product);
+                const priceEuros = parseXOF(product.price); // Prix en FCFA
                 return (
                   <Link
                     key={product.id}
                     href={`/boutique/${product.slug}`}
                     className="group border border-zinc-200 rounded-2xl overflow-hidden bg-white hover:border-yellow-300 hover:shadow-sm transition-[border,box-shadow]"
                   >
+                    {/* 🔴 Image agrandie */}
                     <div className="h-72 sm:h-80 bg-gradient-to-br from-yellow-50 via-white to-zinc-100 flex items-center justify-center overflow-hidden">
                       {product.mainImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -337,6 +219,7 @@ export default function CheckoutSuccessPage() {
                       )}
                     </div>
 
+                    {/* Contenu texte */}
                     <div className="p-4 space-y-1.5">
                       <p className="text-sm sm:text-base font-medium text-zinc-900 line-clamp-2">
                         {product.name}
@@ -347,7 +230,8 @@ export default function CheckoutSuccessPage() {
                         </p>
                       )}
                       <p className="text-sm sm:text-base font-semibold text-zinc-900 mt-1">
-                        {formatXOF(price)}
+                        {/*{priceEuros.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
+                        {formatXOF(priceEuros)} {/* Conversion en FCFA 655.957*/}
                       </p>
                     </div>
                   </Link>

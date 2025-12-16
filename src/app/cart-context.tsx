@@ -96,7 +96,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const mapped: CartItem[] = data.map((it) => ({
           id: it.productId,
           name: it.name,
-          price: it.priceCents / 100,
+          price: it.priceCents / 100, // conversion en euros
+          // price: it.priceCents , // conversion en FCFA
+          
           quantity: it.quantity,
           slug: it.slug,
           imageUrl: it.mainImageUrl ?? null,

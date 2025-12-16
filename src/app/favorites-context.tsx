@@ -71,7 +71,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           id: it.productId,
           slug: it.slug,
           name: it.name,
-          price: it.priceCents / 100,
+          price: it.priceCents / 100, // conversion en euros
+          // price: it.priceCents , // conversion en FCFA
           category: it.category ?? null,
           imageUrl: it.mainImageUrl ?? null,
         }));

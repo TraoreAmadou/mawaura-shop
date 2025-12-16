@@ -154,6 +154,17 @@ model Favorite {
   @@unique([userId, productId])
 }
 
+enum PaymentProvider {
+  CINETPAY
+  PAYDUNYA
+}
+
+enum PaymentStatus {
+  PENDING    // paiement initié, en attente
+  PAID       // accepté
+  FAILED     // refusé/annulé
+  CANCELLED
+}
 
 model Order {
   id          String       @id @default(cuid())
@@ -174,12 +185,32 @@ model Order {
   status      OrderStatus  @default(PENDING)
   shippingStatus ShippingStatus @default(PREPARATION)
 
+  // ✅ Paiement : pad methode
+  paymentStatus      PaymentStatus @default(PENDING)
+  paymentProvider    String?
+  paymentProviderId  String?       // token PayDunya
+  paymentCheckoutUrl String?
+  paidAt             DateTime?
+
   // Lignes de commande
   items       OrderItem[]
 
   // Pour la suite : adresse, commentaire, etc.
   shippingAddress  String?
   notes            String?
+
+  // Version stripe
+  // paymentStatus    PaymentStatus @default(PENDING)
+  // paymentProvider  String?       // ex: "stripe"
+  // paymentProviderId String?      // ex: checkout_session_id
+  // paymentProviderSessionId String?      // id de la session Stripe (checkout_session)
+
+  // version CINETPAY
+  // paymentProvider PaymentProvider @default(CINETPAY)
+  // paymentStatus   PaymentStatus   @default(PENDING)
+  // paymentTransactionId String?    @unique
+  // paymentMethod   String?         // OM, MOMO, WAVE, etc (retourné par CinetPay)
+
 }
 
 model OrderItem {
@@ -208,3 +239,4 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+

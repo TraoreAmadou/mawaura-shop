@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useCart } from "../cart-context";
+import { formatXOF } from "@/lib/money";
 
 type ApiProduct = {
   id: string;
@@ -263,7 +264,8 @@ export default function PanierPage() {
                           </Link>
                           <p className="text-[11px] text-zinc-500">
                             Prix unitaire :{" "}
-                            {item.price.toFixed(2).replace(".", ",")} €
+                            {/*{item.price.toFixed(2).replace(".", ",")} € // en euros */}
+                            {formatXOF(item.price)} {/* en FCFA */}
                           </p>
                           {product?.category && (
                             <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
@@ -339,7 +341,8 @@ export default function PanierPage() {
                             Total
                           </p>
                           <p className="text-sm sm:text-base font-semibold text-zinc-900">
-                            {lineTotal.toFixed(2).replace(".", ",")} €
+                            {/*{lineTotal.toFixed(2).replace(".", ",")} €*/} {/* en euros */}
+                            {formatXOF(lineTotal)} {/* en FCFA */}
                           </p>
                         </div>
                       </div>
@@ -373,7 +376,8 @@ export default function PanierPage() {
             <div className="flex justify-between">
               <span>Sous-total</span>
               <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
+                {/*totalPrice.toFixed(2).replace(".", ",") €*/}  {/* en euros */}
+                {formatXOF(totalPrice)} {/* en FCFA */}
               </span>
             </div>
             <div className="flex justify-between text-zinc-500 text-xs">
@@ -386,7 +390,8 @@ export default function PanierPage() {
             <div className="flex justify-between items-center text-sm font-semibold">
               <span>Total</span>
               <span>
-                {totalPrice.toFixed(2).replace(".", ",")} €
+                {/*totalPrice.toFixed(2).replace(".", ",") €*/}  {/* en euros */}
+                {formatXOF(totalPrice)} {/* en FCFA */}
               </span>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">

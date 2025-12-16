@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
 
@@ -329,10 +330,8 @@ export default function CommandeDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm sm:text-base font-semibold text-zinc-900">
-                    {(order.totalCents / 100)
-                      .toFixed(2)
-                      .replace(".", ",")}{" "}
-                    €
+                    {(formatXOF(order.totalCents / 100))}{" "}
+                    
                   </p>
                   {badge && (
                     <div className="mt-1">
@@ -413,10 +412,12 @@ export default function CommandeDetailPage() {
                       </div>
                       <div className="text-right text-xs sm:text-sm text-zinc-700">
                         <p>
-                          {unitEuros.toFixed(2).replace(".", ",")} € / pièce
+                          {/* {unitEuros.toFixed(2).replace(".", ",")} € / pièce */}
+                          {formatXOF(unitEuros)} / pièce
                         </p>
                         <p className="font-medium text-zinc-900">
-                          {lineEuros.toFixed(2).replace(".", ",")} €
+                          {/* {lineEuros.toFixed(2).replace(".", ",")} € */}
+                          {formatXOF(lineEuros) } {/* FCFA */}
                         </p>
                       </div>
                     </div>

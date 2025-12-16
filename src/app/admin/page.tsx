@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type Product = {
   id: string;
@@ -460,7 +461,8 @@ export default function AdminPage() {
             ) : (
               <>
                 <p className="text-2xl font-semibold text-zinc-900">
-                  {totalRevenue.toFixed(2).replace(".", ",")} €
+                  {/* {totalRevenue.toFixed(2).replace(".", ",")} € */} {/* en euro */}
+                  {formatXOF(totalRevenue)} {/* en FCFA */}
                 </p>
                 <p className="mt-1 text-[10px] text-zinc-500">
                   {revenueFilterLabel}
@@ -563,14 +565,15 @@ export default function AdminPage() {
                             }}
                             title={`${formatMonthLabel(
                               monthKey
-                            )} — ${value.toFixed(2).replace(".", ",")} €`}
+                            )} — ${formatXOF(value)} `} 
                           />
                         </div>
                         <div className="text-[10px] text-zinc-500 text-center">
                           {formatMonthLabel(monthKey)}
                         </div>
                         <div className="text-[10px] text-zinc-700 text-center">
-                          {value.toFixed(0)} €
+                          {/* {value.toFixed(0)} € */}
+                          {formatXOF(value)}
                         </div>
                       </div>
                     );
@@ -627,13 +630,12 @@ export default function AdminPage() {
                           style={{
                             width: `${Math.max(widthPercent, 5)}%`,
                           }}
-                          title={`${category} — ${value
-                            .toFixed(2)
-                            .replace(".", ",")} €`}
+                          title={`${category} — ${formatXOF(value)}`}
                         />
                       </div>
                       <div className="w-14 text-right text-[10px] text-zinc-700">
-                        {value.toFixed(0)} €
+                        {/* {value.toFixed(0)} € */}
+                        {formatXOF(value)}
                       </div>
                     </div>
                   );
@@ -676,7 +678,8 @@ export default function AdminPage() {
 
             <div className="space-y-1.5">
               <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
-                Prix (en €) *
+                {/* Prix (en €) * */}
+                Prix (en FCFA) *
               </label>
               <input
                 name="price"
@@ -687,7 +690,7 @@ export default function AdminPage() {
                 onChange={handleChange}
                 required
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900"
-                placeholder="Ex : 29.90"
+                placeholder="Ex : 5000"
               />
             </div>
 
@@ -902,7 +905,8 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="py-2 px-3 text-zinc-700">
-                        {(p.priceCents / 100).toFixed(2)} €
+                        {/* {(p.priceCents / 100).toFixed(2)} € */}
+                        {formatXOF(p.priceCents / 100)}
                       </td>
                       <td className="py-2 px-3 text-zinc-600 hidden sm:table-cell">
                         {p.category || "—"}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "../../cart-context";
 import { useFavorites } from "../../favorites-context";
+import { formatXOF } from "@/lib/money";
 
 type ProductImage = {
   id: string;
@@ -316,7 +317,9 @@ export default function ProductDetailPage() {
           {/* Prix + messages de stock */}
           <div className="space-y-1">
             <p className="text-lg sm:text-xl font-semibold text-zinc-900">
-              {product.price.toFixed(2).replace(".", ",")} €
+              {/*{product.price.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
+              {formatXOF(product.price)} {/* Conversion en FCFA 655.957*/}
+              
             </p>
 
             {isUnavailable && (

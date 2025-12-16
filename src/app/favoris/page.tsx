@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useFavorites } from "../favorites-context";
 import { useCart } from "../cart-context";
+import { formatXOF } from "@/lib/money";
 
 type ApiProduct = {
   id: string;
@@ -86,7 +87,8 @@ export default function FavorisPage() {
 
   const formatPrice = (price: any) => {
     if (typeof price === "number") {
-      return `${price.toFixed(2).replace(".", ",")} €`;
+      {/*return `${price.toFixed(2).replace(".", ",")} €`; */} {/*  en euros  */}
+      return formatXOF(price);
     }
     return price;
   };

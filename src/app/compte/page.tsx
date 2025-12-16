@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type ApiOrderItem = {
   id: string;
@@ -327,7 +328,8 @@ export default function ComptePage() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            {totalEuros.toFixed(2).replace(".", ",")} €
+                            {/*{totalEuros.toFixed(2).replace(".", ",")} € */} 
+                            {formatXOF(totalEuros)}
                           </p>
                           <div className="mt-1">
                             <span className={badge.className}>

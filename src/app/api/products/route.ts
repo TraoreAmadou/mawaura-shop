@@ -25,6 +25,8 @@ export async function GET() {
         description: p.description,
         category: p.category,
         price: p.priceCents / 100, // en euros
+        // price: p.priceCents, // en FCFA
+        currency: "XOF",
         isFeatured: p.isFeatured,
         isNew: p.isNew,
         isBestSeller: p.isBestSeller,

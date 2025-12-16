@@ -38,7 +38,9 @@ export async function GET(
       name: product.name,
       description: product.description,
       category: product.category,
-      price: product.priceCents / 100,
+      price: product.priceCents / 100, // en euros
+      // price: product.priceCents, // en FCFA
+      currency: "XOF",
       isFeatured: product.isFeatured,
       isNew: product.isNew,
       isBestSeller: product.isBestSeller,

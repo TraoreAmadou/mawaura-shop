@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type AdminOrderItem = {
   id: string;
@@ -171,7 +172,8 @@ export default function AdminOrdersPage() {
               Montant total (approx.)
             </p>
             <p className="text-xl font-semibold text-zinc-900">
-              {totalAmountEuros.toFixed(2).replace(".", ",")} €
+              {/* {totalAmountEuros.toFixed(2).replace(".", ",")} € */}
+              {formatXOF(totalAmountEuros)} {/* Approx. conversion EUR → XOF */}
             </p>
           </div>
           <div className="border border-zinc-200 rounded-2xl p-4 bg-white/80">
@@ -278,7 +280,8 @@ export default function AdminOrdersPage() {
                         </td>
                         <td className="py-2.5 px-2 align-top whitespace-nowrap">
                           <span className="font-medium text-zinc-900">
-                            {totalEuros.toFixed(2).replace(".", ",")} €
+                            {/* {totalEuros.toFixed(2).replace(".", ",")} € */} 
+                            {formatXOF(totalEuros)} {/* Affichage en FCFA */}
                           </span>
                         </td>
                         <td className="py-2.5 px-2 align-top">

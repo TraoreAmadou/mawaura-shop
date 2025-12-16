@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type AdminOrderItem = {
   id: string;
@@ -304,10 +305,8 @@ export default function AdminOrderDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm sm:text-base font-semibold text-zinc-900">
-                    {(order.totalCents / 100)
-                      .toFixed(2)
-                      .replace(".", ",")}{" "}
-                    €
+                    {/* {(order.totalCents / 100).toFixed(2).replace(".", ",")}{" "} € */} 
+                    {formatXOF(order.totalCents / 100)} {/* Affichage en FCFA */}
                   </p>
                   {badge && (
                     <div className="mt-1">
@@ -510,10 +509,12 @@ export default function AdminOrderDetailPage() {
                       </div>
                       <div className="text-right text-xs sm:text-sm text-zinc-700">
                         <p>
-                          {unitEuros.toFixed(2).replace(".", ",")} € / pièce
+                          {/* {unitEuros.toFixed(2).replace(".", ",")} € / pièce  */}
+                          {formatXOF(unitEuros)} / pièce
                         </p>
                         <p className="font-medium text-zinc-900">
-                          {totalEuros.toFixed(2).replace(".", ",")} €
+                          {/* {totalEuros.toFixed(2).replace(".", ",")} € */}
+                          {formatXOF(totalEuros)}
                         </p>
                       </div>
                     </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useCart } from "../cart-context";
 import { useFavorites } from "../favorites-context";
+import { formatXOF } from "@/lib/money";
 
 type ShopProduct = {
   id: string;
@@ -368,7 +369,8 @@ export default function BoutiquePage() {
 
                     <div className="mt-1 flex items-center justify-between">
                       <p className="text-sm font-semibold text-zinc-900">
-                        {product.price.toFixed(2).replace(".", ",")} €
+                        {/*{product.price.toFixed(2).replace(".", ",")} € */ } {/* Conversion en Euro */}
+                        {formatXOF(product.price)} {/* Conversion en FCFA 655.957  */}
                       </p>
                     </div>
 

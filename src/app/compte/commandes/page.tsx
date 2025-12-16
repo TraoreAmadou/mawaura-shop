@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type ApiOrderItem = {
   id: string;
@@ -209,7 +210,8 @@ export default function CommandesPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm sm:text-base font-semibold text-zinc-900">
-                        {totalEuros.toFixed(2).replace(".", ",")} €
+                        {/*{totalEuros.toFixed(2).replace(".", ",")} €*/} {/* Affichage en euros */}
+                        {formatXOF(totalEuros)} {/* Affichage en FCFA */}
                       </p>
                       <div className="mt-1">
                         <span className={badge.className}>

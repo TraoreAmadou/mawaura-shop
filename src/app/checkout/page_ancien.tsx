@@ -2,28 +2,31 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "../cart-context";
 import { formatXOF } from "@/lib/money";
 
+type ApiOrder = {
+  id: string;
+};
+
 export default function CheckoutPage() {
+  const router = useRouter();
   const { data: session, status } = useSession();
-  const { items, totalPrice, totalQuantity } = useCart();
+  const {
+    items,
+    totalPrice,
+    totalQuantity,
+    clearCart,
+  } = useCart();
 
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-
-  // ✅ Fallback redirection
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [showRedirectHelp, setShowRedirectHelp] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const hasItems = items.length > 0;
 
@@ -39,87 +42,12 @@ export default function CheckoutPage() {
     }
   }, [session]);
 
-  // ✅ Empêche le "back" + (optionnel) fermeture onglet pendant la redirection
-  useEffect(() => {
-    if (!redirecting) return;
-
-    window.history.pushState(null, "", window.location.href);
-
-    const onPopState = () => {
-      window.history.pushState(null, "", window.location.href);
-    };
-
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-
-    window.addEventListener("popstate", onPopState);
-    window.addEventListener("beforeunload", onBeforeUnload);
-
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-      window.removeEventListener("beforeunload", onBeforeUnload);
-    };
-  }, [redirecting]);
-
-  // ✅ Si la redirection ne se fait pas, on affiche une aide
-  useEffect(() => {
-    if (!redirecting || !paymentUrl) return;
-
-    setShowRedirectHelp(false);
-    setCopied(false);
-
-    const t = window.setTimeout(() => {
-      setShowRedirectHelp(true);
-    }, 2500);
-
-    return () => window.clearTimeout(t);
-  }, [redirecting, paymentUrl]);
-
-  const openPaydunya = () => {
-    if (!paymentUrl) return;
-    const w = window.open(paymentUrl, "_blank", "noopener,noreferrer");
-    if (!w) {
-      window.location.href = paymentUrl;
-    }
-  };
-
-  const copyLink = async () => {
-    if (!paymentUrl) return;
-    try {
-      await navigator.clipboard.writeText(paymentUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      try {
-        const input = document.createElement("input");
-        input.value = paymentUrl;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand("copy");
-        document.body.removeChild(input);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1500);
-      } catch {
-        setCopied(false);
-      }
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!hasItems) return;
 
-    if (submitting || redirecting) return;
-
     setError(null);
     setSubmitting(true);
-
-    // reset fallback
-    setPaymentUrl(null);
-    setShowRedirectHelp(false);
-    setCopied(false);
 
     try {
       const payload = {
@@ -132,7 +60,7 @@ export default function CheckoutPage() {
         notes: notes || null,
       };
 
-      const res = await fetch("/api/payments/paydunya/create", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -143,25 +71,18 @@ export default function CheckoutPage() {
       if (!res.ok) {
         const message =
           data?.error ||
-          "Une erreur est survenue lors de l'initialisation du paiement.";
+          "Une erreur est survenue lors de la validation de votre commande.";
         setError(message);
         return;
       }
 
-      const url = data?.paymentUrl as string | undefined;
+      const order = data as ApiOrder;
+      clearCart();
 
-      if (!url) {
-        setError("URL de paiement introuvable. Veuillez réessayer.");
-        return;
-      }
-
-      setPaymentUrl(url);
-
-      setRedirecting(true);
-
-      setTimeout(() => {
-        window.location.href = url;
-      }, 350);
+      // Redirection vers le détail de la commande
+      // router.push(`/compte/commandes/${order.id}`);
+      // Redirection vers la page de confirmation dédiée
+      router.push(`/checkout/success?orderId=${order.id}`);
     } catch (err) {
       console.error("Erreur checkout:", err);
       setError(
@@ -172,14 +93,18 @@ export default function CheckoutPage() {
     }
   };
 
+  // Loading de la session
   if (status === "loading") {
     return (
       <main className="min-h-screen bg-white text-zinc-900 flex items-center justify-center">
-        <p className="text-sm text-zinc-500">Chargement de votre espace...</p>
+        <p className="text-sm text-zinc-500">
+          Chargement de votre espace...
+        </p>
       </main>
     );
   }
 
+  // Si pas connecté → demander la connexion
   if (status !== "authenticated" || !session?.user) {
     return (
       <main className="min-h-screen bg-white text-zinc-900">
@@ -206,7 +131,9 @@ export default function CheckoutPage() {
                   Panier
                 </Link>
                 <span className="mx-1">/</span>
-                <span className="text-zinc-800 font-medium">Checkout</span>
+                <span className="text-zinc-800 font-medium">
+                  Checkout
+                </span>
               </nav>
             </div>
           </div>
@@ -235,7 +162,8 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  // Si le panier est vide
+  if (!hasItems) {
     return (
       <main className="min-h-screen bg-white text-zinc-900">
         <header className="border-b border-zinc-200 bg-zinc-50/80">
@@ -261,7 +189,9 @@ export default function CheckoutPage() {
                   Panier
                 </Link>
                 <span className="mx-1">/</span>
-                <span className="text-zinc-800 font-medium">Checkout</span>
+                <span className="text-zinc-800 font-medium">
+                  Checkout
+                </span>
               </nav>
             </div>
           </div>
@@ -269,7 +199,8 @@ export default function CheckoutPage() {
 
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
           <p className="text-sm sm:text-base text-zinc-600 mb-4">
-            Ajoutez des bijoux à votre panier avant de valider votre commande.
+            Ajoutez des bijoux à votre panier avant de valider votre
+            commande.
           </p>
           <Link
             href="/boutique"
@@ -283,66 +214,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white text-zinc-900 relative">
-      {/* ✅ Overlay pendant la redirection */}
-      {redirecting && (
-        <div className="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="max-w-sm w-full border border-zinc-200 rounded-3xl bg-white shadow-sm p-6 text-center space-y-3">
-            <div className="mx-auto h-10 w-10 rounded-full border-2 border-zinc-900 border-t-transparent animate-spin" />
-
-            <p className="text-sm font-medium text-zinc-900">
-              Vous allez être redirigé vers PayDunya…
-            </p>
-
-            {/* ✅ Montant + quantité */}
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left">
-              <div className="flex items-center justify-between text-[11px] text-zinc-600">
-                <span>Montant à payer</span>
-                <span className="font-semibold text-zinc-900">
-                  {formatXOF(totalPrice)}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-600">
-                <span>Articles</span>
-                <span className="font-medium text-zinc-900">
-                  {totalQuantity} pièce{totalQuantity > 1 ? "s" : ""}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-zinc-500">
-              Ne fermez pas cette page et n&apos;utilisez pas le bouton retour
-              pendant la redirection.
-            </p>
-
-            {/* ✅ Fallback si la redirection ne marche pas */}
-            {showRedirectHelp && paymentUrl && (
-              <div className="pt-2 space-y-2">
-                <p className="text-[11px] text-zinc-600">
-                  La redirection peut être bloquée sur certains navigateurs.
-                </p>
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={openPaydunya}
-                    className="inline-flex items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-5 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-zinc-800 transition"
-                  >
-                    Ouvrir PayDunya
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyLink}
-                    className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-5 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-900 hover:bg-zinc-100 transition"
-                  >
-                    {copied ? "Lien copié ✓" : "Copier le lien"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
+    <main className="min-h-screen bg-white text-zinc-900">
       {/* Bandeau haut */}
       <header className="border-b border-zinc-200 bg-zinc-50/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-2">
@@ -374,19 +246,11 @@ export default function CheckoutPage() {
       </header>
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 grid gap-8 lg:grid-cols-[3fr,2fr]">
-        {/* Formulaire */}
+        {/* Formulaire informations client */}
         <div className="space-y-6">
           {error && (
             <div className="border border-red-200 bg-red-50/70 text-red-700 rounded-2xl px-4 py-3 text-sm">
               {error}
-            </div>
-          )}
-
-          {redirecting && (
-            <div className="border border-zinc-200 bg-zinc-50/70 text-zinc-700 rounded-2xl px-4 py-3 text-sm">
-              Vous allez être redirigé vers{" "}
-              <span className="font-medium">PayDunya</span> pour finaliser votre
-              paiement…
             </div>
           )}
 
@@ -421,8 +285,8 @@ export default function CheckoutPage() {
                     className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-500"
                   />
                   <p className="text-[11px] text-zinc-500">
-                    Votre email est utilisé pour vous envoyer la confirmation de
-                    commande.
+                    Votre email est utilisé pour vous envoyer la confirmation
+                    de commande.
                   </p>
                 </div>
               </div>
@@ -440,9 +304,16 @@ export default function CheckoutPage() {
                   <textarea
                     value={shippingAddress}
                     onChange={(e) => setShippingAddress(e.target.value)}
-                    placeholder={"Ex : 12 rue des Fleurs\n75000 Paris\nFrance"}
+                    placeholder={
+                      "Ex : 12 rue des Fleurs\n75000 Paris\nFrance"
+                    }
                     className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 min-h-[90px] resize-vertical"
                   />
+                  <p className="text-[11px] text-zinc-500">
+                    Indiquez votre rue, code postal, ville et pays. Vous
+                    pourrez préciser des informations complémentaires si
+                    besoin.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -462,31 +333,22 @@ export default function CheckoutPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Link
                 href="/panier"
-                className={`text-[11px] hover:text-zinc-800 ${
-                  redirecting
-                    ? "text-zinc-400 pointer-events-none"
-                    : "text-zinc-500"
-                }`}
+                className="text-[11px] text-zinc-500 hover:text-zinc-800"
               >
                 ← Retour au panier
               </Link>
-
               <button
                 type="submit"
-                disabled={submitting || redirecting}
+                disabled={submitting}
                 className="inline-flex items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white hover:bg-zinc-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {redirecting
-                  ? "Redirection en cours..."
-                  : submitting
-                  ? "Initialisation..."
-                  : "Payer avec Mobile Money"}
+                {submitting ? "Validation en cours..." : "Confirmer ma commande"}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Récap panier */}
+        {/* Récapitulatif panier */}
         <aside className="border border-zinc-200 rounded-2xl p-4 sm:p-5 bg-white shadow-sm h-fit">
           <h2 className="text-sm sm:text-base font-semibold mb-4">
             Récapitulatif des bijoux
@@ -505,12 +367,15 @@ export default function CheckoutPage() {
                       {item.name}
                     </p>
                     <p className="text-[11px] text-zinc-500">
-                      {formatXOF(item.price)} / pièce · {item.quantity}{" "}
+                      {/*{item.price.toFixed(2).replace(".", ",")} € / pièce ·{" "} */} {/* Conversion en Euro */}
+                      {formatXOF(item.price)} / pièce ·{" "}
+                      {item.quantity}{" "}
                       {item.quantity > 1 ? "pièces" : "pièce"}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-zinc-900">
-                    {formatXOF(lineTotal)}
+                    {/*{lineTotal.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
+                    {formatXOF(lineTotal)} {/* Conversion en FCFA */}
                   </p>
                 </div>
               );
@@ -520,12 +385,16 @@ export default function CheckoutPage() {
           <div className="mt-4 space-y-2 text-sm text-zinc-700">
             <div className="flex justify-between">
               <span>Sous-total</span>
-              <span>{formatXOF(totalPrice)}</span>
+              <span>
+                {/*{totalPrice.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
+                {formatXOF(totalPrice)} {/* Conversion en FCFA */}
+              </span>
             </div>
             <div className="flex justify-between text-xs text-zinc-500">
               <span>Articles</span>
               <span>
-                {totalQuantity} article{totalQuantity > 1 ? "s" : ""}
+                {totalQuantity} article
+                {totalQuantity > 1 ? "s" : ""}
               </span>
             </div>
             <div className="flex justify-between text-xs text-zinc-500">
@@ -536,11 +405,15 @@ export default function CheckoutPage() {
             <div className="border-t border-zinc-200 pt-3 mt-2">
               <div className="flex justify-between items-center text-sm font-semibold">
                 <span>Total estimé</span>
-                <span>{formatXOF(totalPrice)}</span>
+                <span>
+                  {/* {totalPrice.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
+                  {formatXOF(totalPrice)} {/* Conversion en FCFA */}
+                </span>
               </div>
               <p className="mt-2 text-[11px] text-zinc-500">
-                Vous serez redirigé vers PayDunya pour valider le paiement Mobile
-                Money.
+                Le montant final peut varier légèrement selon les frais de
+                livraison. Vous recevrez un récapitulatif détaillé par email
+                après confirmation.
               </p>
             </div>
           </div>

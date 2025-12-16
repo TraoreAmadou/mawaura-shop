@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatXOF } from "@/lib/money";
 
 type ProductImage = {
   id: string;
@@ -247,7 +248,8 @@ export default function EditProductPage() {
 
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-[0.16em] text-zinc-600">
-              Prix (en €) *
+              {/* Prix (en €) * */}
+              Prix (en XOF) *
             </label>
             <input
               name="price"
