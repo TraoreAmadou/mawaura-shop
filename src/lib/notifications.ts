@@ -58,11 +58,15 @@ async function sendEmail(opts: {
 
   const toList = Array.isArray(opts.to) ? opts.to : [opts.to];
 
+  // ✅ Reply-To global (optionnel)
+  const replyTo = process.env.MAWAURA_REPLY_TO;
+
   const { error } = await resend.emails.send({
     from,
     to: toList,
     subject: opts.subject,
     html: opts.html,
+    ...(replyTo ? { reply_to: replyTo } : {}),
   });
 
   if (error) {
@@ -295,9 +299,9 @@ export async function sendAdminNewPaidOrderEmail(params: {
         totalXof
       )}</div>
       <div style="color:#111;margin-top:6px;">
-        <b>Client :</b> ${escapeHtml(params.customerName || "Client Mawaura")} — ${escapeHtml(
-    params.customerEmail
-  )}
+        <b>Client :</b> ${escapeHtml(
+          params.customerName || "Client Mawaura"
+        )} — ${escapeHtml(params.customerEmail)}
       </div>
     </div>
 
@@ -335,7 +339,6 @@ export async function sendAdminNewPaidOrderEmail(params: {
     </a>
   `;
 
-  // Envoi à tous les admins configurés
   await sendEmail({
     to: admins,
     subject: `✅ Nouvelle commande payée — ${params.orderId.slice(0, 8)}… (${formatXOF(
