@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import { sendShippingStatusEmail } from "@/lib/notifications";
-
-export const runtime = "nodejs";
-
-type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+import { sendEmail } from "@/lib/email";
+import { shippingUpdateTemplate } from "@/lib/email-templates";
 
 async function requireAdmin(req: NextRequest) {
   const token = await getToken({
@@ -19,6 +15,8 @@ async function requireAdmin(req: NextRequest) {
   }
   return token;
 }
+
+type ShippingStatus = "PREPARATION" | "SHIPPED" | "DELIVERED" | "RECEIVED";
 
 // GET /api/admin/orders/:id → détail commande
 export async function GET(
@@ -42,7 +40,9 @@ export async function GET(
   try {
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { items: true },
+      include: {
+        items: true,
+      },
     });
 
     if (!order) {
@@ -56,8 +56,7 @@ export async function GET(
       id: order.id,
       createdAt: order.createdAt,
       status: order.status,
-      shippingStatus: ((order as any).shippingStatus ?? "PREPARATION") as ShippingStatus,
-      paymentStatus: ((order as any).paymentStatus ?? "PENDING") as PaymentStatus,
+      shippingStatus: (order as any).shippingStatus ?? "PREPARATION",
       totalCents: order.totalCents,
       email: order.email,
       customerName: order.customerName,
@@ -84,7 +83,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/admin/orders/:id → mise à jour statut & suivi (+ gestion stock) + email suivi (si PAID)
+// PATCH /api/admin/orders/:id → mise à jour statut & suivi (+ gestion stock)
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -146,9 +145,13 @@ export async function PATCH(
     updates.shippingStatus = body.shippingStatus;
   }
 
-  if (typeof body.notes !== "undefined") updates.notes = body.notes;
-  if (typeof body.shippingAddress !== "undefined")
+  if (typeof body.notes !== "undefined") {
+    updates.notes = body.notes;
+  }
+
+  if (typeof body.shippingAddress !== "undefined") {
     updates.shippingAddress = body.shippingAddress;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json(
@@ -157,68 +160,63 @@ export async function PATCH(
     );
   }
 
+  // ✅ Infos pour l’email (préparées dans la transaction)
+  let shouldSendShippingEmail = false;
+  let emailToNotify: string | null = null;
+  let customerName: string | null = null;
+  let newShippingStatus: ShippingStatus | null = null;
+
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // On récupère la commande actuelle AVEC ses items
       const existing = await tx.order.findUnique({
         where: { id },
         include: { items: true },
       });
 
-      if (!existing) throw new Error("NOT_FOUND");
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
 
       const previousStatus = existing.status as
         | "PENDING"
         | "CONFIRMED"
         | "CANCELLED";
 
-      const previousShipping =
-        (((existing as any).shippingStatus as ShippingStatus | null) ??
-          "PREPARATION") as ShippingStatus;
+      const previousShipping: ShippingStatus =
+        ((existing as any).shippingStatus as ShippingStatus | null) ??
+        "PREPARATION";
 
-      const previousPaymentStatus =
-        (((existing as any).paymentStatus as PaymentStatus | null) ??
-          "PENDING") as PaymentStatus;
+      const paymentStatus = (existing as any).paymentStatus as
+        | "PENDING"
+        | "PAID"
+        | "FAILED"
+        | "CANCELLED"
+        | undefined;
 
-      const previousPaidAt = (existing as any).paidAt as Date | null;
+      const isPaid = paymentStatus === "PAID";
 
-      // ✅ NOUVEAU : si un admin passe la commande en CONFIRMED,
-      // on considère qu'il a validé le paiement manuellement => paymentStatus=PAID
-      const finalUpdates = { ...updates } as any;
-
-      if (body.status === "CONFIRMED" && previousPaymentStatus !== "PAID") {
-        finalUpdates.paymentStatus = "PAID";
-        finalUpdates.paidAt = previousPaidAt ?? new Date();
-      }
-
-      // On calcule le statut de paiement "effectif" (utile si status+shipping changent en même temps)
-      const effectivePaymentStatus: PaymentStatus =
-        (finalUpdates.paymentStatus as PaymentStatus | undefined) ??
-        previousPaymentStatus;
-
-      // 🔒 Bloquer l'avancement logistique si pas payé (en se basant sur le statut effectif)
+      // ✅ Détecter un vrai changement de shippingStatus
+      // ✅ ET envoyer uniquement si commande payée
       if (
-        body.shippingStatus &&
-        ["SHIPPED", "DELIVERED", "RECEIVED"].includes(body.shippingStatus) &&
-        effectivePaymentStatus !== "PAID"
+        isPaid &&
+        typeof body.shippingStatus !== "undefined" &&
+        body.shippingStatus !== previousShipping
       ) {
-        throw new Error("NOT_PAID_SHIPPING_LOCK");
+        shouldSendShippingEmail = true;
+        emailToNotify = existing.email;
+        customerName = existing.customerName ?? null;
+        newShippingStatus = body.shippingStatus;
       }
 
       // Mise à jour de la commande
       const updated = await tx.order.update({
         where: { id },
-        data: finalUpdates,
+        data: updates,
       });
 
-      const nextShipping =
-        (((updated as any).shippingStatus as ShippingStatus | null) ??
-          "PREPARATION") as ShippingStatus;
-
-      const nextPaymentStatus =
-        (((updated as any).paymentStatus as PaymentStatus | null) ??
-          "PENDING") as PaymentStatus;
-
-      // Recrédit stock si annulation (comme avant)
+      // Si on passe en CANCELLED et qu'on n'était pas déjà annulé
+      // ET que la commande n'a pas été expédiée/livrée/reçue → on recrédite le stock
       if (
         body.status === "CANCELLED" &&
         previousStatus !== "CANCELLED" &&
@@ -227,57 +225,51 @@ export async function PATCH(
         for (const item of existing.items) {
           await tx.product.update({
             where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
+            data: {
+              stock: {
+                increment: item.quantity,
+              },
+            },
           });
         }
       }
 
-      // ✅ Email suivi UNIQUEMENT si commande PAID
-      const shouldNotifyShipping =
-        !!body.shippingStatus &&
-        nextShipping !== previousShipping &&
-        ["SHIPPED", "DELIVERED", "RECEIVED"].includes(nextShipping) &&
-        nextPaymentStatus === "PAID";
-
-      return {
-        updated,
-        notify: shouldNotifyShipping
-          ? { to: existing.email, orderId: existing.id, shippingStatus: nextShipping }
-          : null,
-      };
+      return updated;
     });
 
-    // 🔔 Envoi email APRES la transaction
-    if (result.notify) {
+    // ✅ Email envoyé APRÈS transaction (ne bloque pas la réponse)
+    if (shouldSendShippingEmail && emailToNotify && newShippingStatus) {
       try {
-        await sendShippingStatusEmail(result.notify);
+        const tpl = shippingUpdateTemplate({
+          orderId: id,
+          customerName,
+          shippingStatus: newShippingStatus,
+        });
+
+        await sendEmail({
+          to: emailToNotify,
+          subject: tpl.subject,
+          html: tpl.html,
+          text: tpl.text,
+        });
       } catch (e) {
-        console.error("Email suivi commande échoué:", e);
+        console.error("❌ Email shipping update failed:", e);
       }
     }
 
     return NextResponse.json(
       {
-        id: result.updated.id,
-        status: result.updated.status,
-        shippingStatus: (result.updated as any).shippingStatus ?? "PREPARATION",
-        paymentStatus: (result.updated as any).paymentStatus ?? "PENDING",
-        paidAt: (result.updated as any).paidAt ?? null,
-        notes: (result.updated as any).notes ?? null,
-        shippingAddress: (result.updated as any).shippingAddress ?? null,
+        id: result.id,
+        status: result.status,
+        shippingStatus: (result as any).shippingStatus ?? "PREPARATION",
+        notes: (result as any).notes ?? null,
+        shippingAddress: (result as any).shippingAddress ?? null,
       },
       { status: 200 }
     );
   } catch (error: any) {
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
-    }
-
-    if (error instanceof Error && error.message === "NOT_PAID_SHIPPING_LOCK") {
-      return NextResponse.json(
-        { error: "Impossible d’expédier/livrer une commande non payée." },
-        { status: 400 }
-      );
     }
 
     console.error("Erreur mise à jour commande admin:", error);

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { paydunyaConfirmInvoice } from "@/lib/paydunya";
-import { sendOrderPaidConfirmationEmail } from "@/lib/notifications";
-
-export const runtime = "nodejs";
+import { sendEmail } from "@/lib/email";
+import { orderConfirmationTemplate } from "@/lib/email-templates";
 
 function mapPaydunyaStatus(s?: string) {
   const v = (s || "").toLowerCase();
@@ -11,6 +10,37 @@ function mapPaydunyaStatus(s?: string) {
   if (v === "cancelled") return "CANCELLED";
   if (v === "failed") return "FAILED";
   return "PENDING";
+}
+
+async function sendOrderConfirmationEmail(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+
+  if (!order) return;
+
+  const tpl = orderConfirmationTemplate({
+    orderId: order.id,
+    customerName: order.customerName,
+    email: order.email,
+    totalCents: order.totalCents,
+    items: order.items.map((it) => ({
+      productNameSnapshot: it.productNameSnapshot,
+      quantity: it.quantity,
+      unitPriceCents: it.unitPriceCents,
+      totalPriceCents: it.totalPriceCents,
+    })),
+    shippingAddress: (order as any).shippingAddress ?? null,
+    notes: (order as any).notes ?? null,
+  });
+
+  await sendEmail({
+    to: order.email,
+    subject: tpl.subject,
+    html: tpl.html,
+    text: tpl.text,
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -31,46 +61,37 @@ export async function GET(req: NextRequest) {
       include: { items: true },
     });
 
-    let shouldSendPaidEmail = false;
-    let orderForEmail:
-      | (typeof order & {
-          shippingAddress?: string | null;
-        })
-      | null = null;
+    // ✅ Pour éviter les doublons d'emails :
+    // on n'envoie l'email QUE si on passe vers PAID alors qu'avant ce n'était pas PAID
+    const wasPaid = order?.paymentStatus === "PAID";
 
     if (order) {
-      const previousPaymentStatus =
-        ((order as any).paymentStatus as string | null) ?? "PENDING";
-      const previousPaidAt = (order as any).paidAt as Date | null;
-
-      // si paiement confirmé -> PAID + CONFIRMED
       if (paymentStatus === "PAID") {
-        // ✅ Email seulement si on n’était pas déjà PAID (idempotent)
-        const wasAlreadyPaid =
-          previousPaymentStatus === "PAID" || !!previousPaidAt;
-
-        const updated = await prisma.order.update({
+        // si paiement confirmé -> PAID + CONFIRMED
+        await prisma.order.update({
           where: { id: order.id },
           data: {
             paymentStatus: "PAID",
-            paidAt: previousPaidAt ?? new Date(),
+            paidAt: new Date(),
             status: order.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED",
           },
-          include: { items: true },
         });
 
-        shouldSendPaidEmail = !wasAlreadyPaid;
-        orderForEmail = updated as any;
+        // ✅ Email confirmation (une seule fois)
+        if (!wasPaid && order.status !== "CANCELLED") {
+          try {
+            await sendOrderConfirmationEmail(order.id);
+          } catch (e) {
+            console.error("❌ Email confirmation failed:", e);
+            // on ne casse pas la réponse API
+          }
+        }
       } else if (paymentStatus === "CANCELLED" || paymentStatus === "FAILED") {
         // option: annuler et recréditer stock si toujours en préparation
-        const shippingStatus =
-          (((order as any).shippingStatus as string | null) ?? "PREPARATION") as
-            | "PREPARATION"
-            | "SHIPPED"
-            | "DELIVERED"
-            | "RECEIVED";
-
-        if (shippingStatus === "PREPARATION" && order.status !== "CANCELLED") {
+        if (
+          order.shippingStatus === "PREPARATION" &&
+          order.status !== "CANCELLED"
+        ) {
           await prisma.$transaction(async (tx) => {
             for (const item of order.items) {
               await tx.product.update({
@@ -97,27 +118,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ✉️ Email de confirmation (après la mise à jour BDD)
-    if (shouldSendPaidEmail && orderForEmail) {
-      try {
-        await sendOrderPaidConfirmationEmail({
-          to: orderForEmail.email,
-          orderId: orderForEmail.id,
-          customerName: orderForEmail.customerName,
-          totalCents: orderForEmail.totalCents,
-          items: orderForEmail.items.map((it: any) => ({
-            productNameSnapshot: it.productNameSnapshot,
-            quantity: it.quantity,
-            unitPriceCents: it.unitPriceCents,
-            totalPriceCents: it.totalPriceCents,
-          })),
-          shippingAddress: (orderForEmail as any).shippingAddress ?? null,
-        });
-      } catch (e) {
-        console.error("Email confirmation commande (Resend) échoué:", e);
-      }
-    }
-
     return NextResponse.json(
       {
         ok: true,
@@ -134,4 +134,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
