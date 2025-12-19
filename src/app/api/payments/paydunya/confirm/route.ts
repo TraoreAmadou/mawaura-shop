@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { paydunyaConfirmInvoice } from "@/lib/paydunya";
-import { sendOrderPaidConfirmationEmail } from "@/lib/notifications";
+import {
+  sendOrderPaidConfirmationEmail,
+  sendAdminNewPaidOrderEmail,
+} from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -35,6 +38,7 @@ export async function GET(req: NextRequest) {
     let orderForEmail:
       | (typeof order & {
           shippingAddress?: string | null;
+          notes?: string | null;
         })
       | null = null;
 
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
 
       // si paiement confirmé -> PAID + CONFIRMED
       if (paymentStatus === "PAID") {
-        // ✅ Email seulement si on n’était pas déjà PAID (idempotent)
+        // ✅ Emails seulement si on n’était pas déjà PAID (idempotent)
         const wasAlreadyPaid =
           previousPaymentStatus === "PAID" || !!previousPaidAt;
 
@@ -97,8 +101,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ✉️ Email de confirmation (après la mise à jour BDD)
+    // ✉️ Emails (après la mise à jour BDD)
     if (shouldSendPaidEmail && orderForEmail) {
+      // 1) Client : confirmation de commande payée
       try {
         await sendOrderPaidConfirmationEmail({
           to: orderForEmail.email,
@@ -115,6 +120,26 @@ export async function GET(req: NextRequest) {
         });
       } catch (e) {
         console.error("Email confirmation commande (Resend) échoué:", e);
+      }
+
+      // 2) Admin interne : nouvelle commande payée
+      try {
+        await sendAdminNewPaidOrderEmail({
+          orderId: orderForEmail.id,
+          customerEmail: orderForEmail.email,
+          customerName: orderForEmail.customerName,
+          totalCents: orderForEmail.totalCents,
+          items: orderForEmail.items.map((it: any) => ({
+            productNameSnapshot: it.productNameSnapshot,
+            quantity: it.quantity,
+            unitPriceCents: it.unitPriceCents,
+            totalPriceCents: it.totalPriceCents,
+          })),
+          shippingAddress: (orderForEmail as any).shippingAddress ?? null,
+          notes: (orderForEmail as any).notes ?? null,
+        });
+      } catch (e) {
+        console.error("Email admin nouvelle commande payée (Resend) échoué:", e);
       }
     }
 
@@ -134,4 +159,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

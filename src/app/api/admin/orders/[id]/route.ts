@@ -56,8 +56,10 @@ export async function GET(
       id: order.id,
       createdAt: order.createdAt,
       status: order.status,
-      shippingStatus: ((order as any).shippingStatus ?? "PREPARATION") as ShippingStatus,
-      paymentStatus: ((order as any).paymentStatus ?? "PENDING") as PaymentStatus,
+      shippingStatus: ((order as any).shippingStatus ??
+        "PREPARATION") as ShippingStatus,
+      paymentStatus: ((order as any).paymentStatus ??
+        "PENDING") as PaymentStatus,
       totalCents: order.totalCents,
       email: order.email,
       customerName: order.customerName,
@@ -108,6 +110,8 @@ export async function PATCH(
     shippingStatus?: ShippingStatus;
     notes?: string | null;
     shippingAddress?: string | null;
+    // (optionnel) permet à l'admin de forcer le paiement, si tu veux l'utiliser côté front
+    paymentStatus?: PaymentStatus;
   };
 
   try {
@@ -150,6 +154,21 @@ export async function PATCH(
   if (typeof body.shippingAddress !== "undefined")
     updates.shippingAddress = body.shippingAddress;
 
+  // Optionnel : si tu permets au front admin de forcer paymentStatus
+  if (body.paymentStatus) {
+    const allowedPayment = ["PENDING", "PAID", "FAILED", "CANCELLED"] as const;
+    if (!allowedPayment.includes(body.paymentStatus)) {
+      return NextResponse.json(
+        { error: "Statut de paiement invalide." },
+        { status: 400 }
+      );
+    }
+    updates.paymentStatus = body.paymentStatus;
+    if (body.paymentStatus === "PAID") {
+      updates.paidAt = new Date();
+    }
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json(
       { error: "Aucune mise à jour fournie." },
@@ -181,21 +200,31 @@ export async function PATCH(
 
       const previousPaidAt = (existing as any).paidAt as Date | null;
 
-      // ✅ NOUVEAU : si un admin passe la commande en CONFIRMED,
-      // on considère qu'il a validé le paiement manuellement => paymentStatus=PAID
+      // ✅ Règle : si un admin passe la commande en CONFIRMED,
+      // on considère que le paiement est validé (comme si PayDunya l’avait confirmé)
       const finalUpdates = { ...updates } as any;
 
+      // 1) Si admin confirme -> paymentStatus=PAID (idempotent)
       if (body.status === "CONFIRMED" && previousPaymentStatus !== "PAID") {
         finalUpdates.paymentStatus = "PAID";
         finalUpdates.paidAt = previousPaidAt ?? new Date();
       }
 
-      // On calcule le statut de paiement "effectif" (utile si status+shipping changent en même temps)
+      // 2) Si admin annule -> paymentStatus=CANCELLED si pas déjà PAID (optionnel mais cohérent)
+      if (
+        body.status === "CANCELLED" &&
+        previousStatus !== "CANCELLED" &&
+        previousPaymentStatus !== "PAID"
+      ) {
+        finalUpdates.paymentStatus = "CANCELLED";
+      }
+
+      // ✅ paiement “effectif” (après update) pour appliquer le verrou logistique
       const effectivePaymentStatus: PaymentStatus =
         (finalUpdates.paymentStatus as PaymentStatus | undefined) ??
         previousPaymentStatus;
 
-      // 🔒 Bloquer l'avancement logistique si pas payé (en se basant sur le statut effectif)
+      // 🔒 Bloquer l'avancement logistique si pas payé (avec le statut effectif)
       if (
         body.shippingStatus &&
         ["SHIPPED", "DELIVERED", "RECEIVED"].includes(body.shippingStatus) &&
@@ -242,7 +271,11 @@ export async function PATCH(
       return {
         updated,
         notify: shouldNotifyShipping
-          ? { to: existing.email, orderId: existing.id, shippingStatus: nextShipping }
+          ? {
+              to: existing.email,
+              orderId: existing.id,
+              shippingStatus: nextShipping,
+            }
           : null,
       };
     });
@@ -270,7 +303,10 @@ export async function PATCH(
     );
   } catch (error: any) {
     if (error instanceof Error && error.message === "NOT_FOUND") {
-      return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Commande introuvable." },
+        { status: 404 }
+      );
     }
 
     if (error instanceof Error && error.message === "NOT_PAID_SHIPPING_LOCK") {
