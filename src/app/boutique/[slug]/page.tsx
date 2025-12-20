@@ -148,16 +148,14 @@ export default function ProductDetailPage() {
   // Indisponible seulement si isActive === false (si undefined => on considère comme disponible)
   const isUnavailable = product.isActive === false;
 
-  const stock =
-    typeof product.stock === "number" ? product.stock : null;
+  const stock = typeof product.stock === "number" ? product.stock : null;
   const lowStockThreshold =
     typeof product.lowStockThreshold === "number"
       ? product.lowStockThreshold
       : null;
 
   // Rupture de stock uniquement si on a une info de stock ET que stock === 0
-  const isOutOfStock =
-    !isUnavailable && stock !== null && stock === 0;
+  const isOutOfStock = !isUnavailable && stock !== null && stock === 0;
 
   // Derniers exemplaires uniquement si stock et seuil sont définis
   const isLowStock =
@@ -222,7 +220,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={handlePrev}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg:white"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg-white"
                       aria-label="Image précédente"
                     >
                       ‹
@@ -230,7 +228,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg:white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 border border-zinc-200 w-8 h-8 flex items-center justify-center text-xs text-zinc-700 hover:bg-white"
                       aria-label="Image suivante"
                     >
                       ›
@@ -294,7 +292,7 @@ export default function ProductDetailPage() {
                 </span>
               )}
               {product.isBestSeller && (
-                <span className="inline-flex items-center rounded-full bg:white text-zinc-900 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] border border-zinc-300">
+                <span className="inline-flex items-center rounded-full bg-white text-zinc-900 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] border border-zinc-300">
                   Best-seller
                 </span>
               )}
@@ -303,9 +301,7 @@ export default function ProductDetailPage() {
 
           {/* Tag éventuel sous le titre */}
           {product.tag && (
-            <p className="text-xs sm:text-sm text-zinc-500">
-              {product.tag}
-            </p>
+            <p className="text-xs sm:text-sm text-zinc-500">{product.tag}</p>
           )}
 
           {product.isFeatured && (
@@ -317,9 +313,7 @@ export default function ProductDetailPage() {
           {/* Prix + messages de stock */}
           <div className="space-y-1">
             <p className="text-lg sm:text-xl font-semibold text-zinc-900">
-              {/*{product.price.toFixed(2).replace(".", ",")} € */} {/* Conversion en Euro */}
-              {formatXOF(product.price)} {/* Conversion en FCFA 655.957*/}
-              
+              {formatXOF(product.price)}
             </p>
 
             {isUnavailable && (
@@ -336,8 +330,7 @@ export default function ProductDetailPage() {
 
             {!isUnavailable && isLowStock && stock !== null && (
               <p className="text-xs sm:text-sm text-amber-600 font-medium">
-                Derniers exemplaires ({stock} restant
-                {stock > 1 ? "s" : ""}).
+                Derniers exemplaires ({stock} restant{stock > 1 ? "s" : ""}).
               </p>
             )}
           </div>
@@ -360,15 +353,17 @@ export default function ProductDetailPage() {
                 })
               }
               disabled={disableAddToCart}
-              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white hover:bg:white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center rounded-full border border-yellow-500 bg-yellow-500 px-6 py-2.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white hover:bg-white hover:text-yellow-600 hover:border-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {disableAddToCart ? "Indisponible" : "Ajouter au panier"}
             </button>
+
             <button
               type="button"
               onClick={() =>
                 toggleFavorite({
                   id: product.id,
+                  slug: product.slug, // ✅ CORRECTION : obligatoire pour FavoriteItem
                   name: product.name,
                   price: product.price,
                   category: product.category,

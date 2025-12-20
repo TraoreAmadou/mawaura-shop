@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "../../cart-context";
@@ -22,7 +22,7 @@ type RecoProduct = {
 
 type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "UNKNOWN";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessInner() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const token = searchParams.get("token"); // PayDunya ajoute token au return_url
@@ -59,10 +59,13 @@ export default function CheckoutSuccessPage() {
         qs.set("token", token);
         if (orderId) qs.set("orderId", orderId);
 
-        const res = await fetch(`/api/payments/paydunya/confirm?${qs.toString()}`, {
-          method: "GET",
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/payments/paydunya/confirm?${qs.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
 
         const data = await res.json().catch(() => null);
 
@@ -86,7 +89,9 @@ export default function CheckoutSuccessPage() {
       } catch (err) {
         console.error("Erreur confirmation PayDunya:", err);
         if (!cancelled) {
-          setConfirmError("Une erreur réseau est survenue lors de la confirmation.");
+          setConfirmError(
+            "Une erreur réseau est survenue lors de la confirmation."
+          );
           setPaymentStatus("UNKNOWN");
         }
       } finally {
@@ -118,8 +123,7 @@ export default function CheckoutSuccessPage() {
 
         const highlighted = products.filter(
           (p) =>
-            (p.isActive ?? true) &&
-            (p.isFeatured || p.isBestSeller || p.isNew)
+            (p.isActive ?? true) && (p.isFeatured || p.isBestSeller || p.isNew)
         );
 
         let recos = highlighted.slice(0, 4);
@@ -159,7 +163,7 @@ export default function CheckoutSuccessPage() {
     return Number.isNaN(n) ? 0 : n;
   };
 
-  const paymentBadge = (() => {
+  const paymentBadge = useMemo(() => {
     if (confirmLoading) {
       return {
         label: "Confirmation du paiement…",
@@ -194,7 +198,7 @@ export default function CheckoutSuccessPage() {
             "inline-flex items-center gap-1 rounded-full bg-zinc-50 text-zinc-700 border border-zinc-200 px-2 py-0.5 text-[10px] font-medium",
         };
     }
-  })();
+  }, [confirmLoading, paymentStatus]);
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
@@ -259,7 +263,8 @@ export default function CheckoutSuccessPage() {
             </p>
           ) : (
             <p className="text-sm sm:text-base text-zinc-600">
-              Vous pouvez retrouver vos commandes et leur suivi dans votre espace compte.
+              Vous pouvez retrouver vos commandes et leur suivi dans votre espace
+              compte.
             </p>
           )}
 
@@ -301,7 +306,8 @@ export default function CheckoutSuccessPage() {
           )}
 
           <p className="mt-4 text-[11px] text-zinc-500">
-            Si vous avez la moindre question, contactez-nous depuis la page contact.
+            Si vous avez la moindre question, contactez-nous depuis la page
+            contact.
           </p>
         </div>
 
@@ -364,5 +370,19 @@ export default function CheckoutSuccessPage() {
         )}
       </section>
     </main>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white text-zinc-900 flex items-center justify-center">
+          <p className="text-sm text-zinc-500">Chargement…</p>
+        </main>
+      }
+    >
+      <CheckoutSuccessInner />
+    </Suspense>
   );
 }

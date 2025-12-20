@@ -7,7 +7,6 @@ import { useCart } from "./cart-context";
 import { useFavorites } from "./favorites-context";
 import { formatXOF } from "@/lib/money";
 
-
 type HomeProduct = {
   id: string;
   slug: string;
@@ -394,17 +393,11 @@ export default function Home() {
                             onClick={() =>
                               toggleFavorite({
                                 id: product.id,
+                                slug: product.slug, // ✅ AJOUTÉ (requis)
                                 name: product.name,
                                 price: product.price,
                                 category: product.category ?? undefined,
                                 imageUrl: displayImageUrl,
-                                isNew: product.isNew ?? false,
-                                isBestSeller: product.isBestSeller ?? false,
-                                tag: product.tag ?? undefined,
-                                isFeatured: product.isFeatured ?? false,
-                                stock,
-                                lowStockThreshold,
-                                isActive: product.isActive ?? true,
                               })
                             }
                             className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
@@ -491,7 +484,8 @@ export default function Home() {
           <div className="space-y-4 text-sm sm:text-base">
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">①</span> Pensé comme une signature
+                <span className="text-yellow-500">①</span> Pensé comme une
+                signature
               </h3>
               <p className="text-zinc-600">
                 Chaque pièce Mawaura est conçue pour s&apos;accorder à votre
@@ -505,15 +499,16 @@ export default function Home() {
                 <span className="text-yellow-500">②</span> Confort & légèreté
               </h3>
               <p className="text-zinc-600">
-                Des pièces pensées pour être portées du matin au soir :
-                légères, agréables sur la peau, faciles à associer à vos tenues
-                du quotidien.
+                Des pièces pensées pour être portées du matin au soir : légères,
+                agréables sur la peau, faciles à associer à vos tenues du
+                quotidien.
               </p>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-4 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-yellow-200">
               <h3 className="font-medium mb-1 text-zinc-900 flex items-center gap-2">
-                <span className="text-yellow-500">③</span> Une vision à long terme
+                <span className="text-yellow-500">③</span> Une vision à long
+                terme
               </h3>
               <p className="text-zinc-600">
                 Notre objectif : construire un e-shop de référence pour des

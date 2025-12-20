@@ -306,6 +306,7 @@ export default function BoutiquePage() {
                     className="relative block aspect-[3/4] bg-gradient-to-br from-yellow-50 via-white to-zinc-100 overflow-hidden"
                   >
                     {displayImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={displayImageUrl}
                         alt={product.name}
@@ -369,8 +370,7 @@ export default function BoutiquePage() {
 
                     <div className="mt-1 flex items-center justify-between">
                       <p className="text-sm font-semibold text-zinc-900">
-                        {/*{product.price.toFixed(2).replace(".", ",")} € */ } {/* Conversion en Euro */}
-                        {formatXOF(product.price)} {/* Conversion en FCFA 655.957  */}
+                        {formatXOF(product.price)}
                       </p>
                     </div>
 
@@ -390,22 +390,17 @@ export default function BoutiquePage() {
                       >
                         {disableAddToCart ? "Indisponible" : "Ajouter au panier"}
                       </button>
+
                       <button
                         type="button"
                         onClick={() =>
                           toggleFavorite({
                             id: product.id,
+                            slug: product.slug, // ✅ indispensable
                             name: product.name,
                             price: product.price,
                             category: product.category ?? undefined,
                             imageUrl: displayImageUrl,
-                            isNew: product.isNew ?? false,
-                            isBestSeller: product.isBestSeller ?? false,
-                            tag: product.tag ?? undefined,
-                            isFeatured: product.isFeatured ?? false,
-                            stock,
-                            lowStockThreshold,
-                            isActive: product.isActive ?? true,
                           })
                         }
                         className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-zinc-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"

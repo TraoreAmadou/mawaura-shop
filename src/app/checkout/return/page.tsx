@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/app/cart-context";
@@ -13,7 +13,7 @@ type StatusPayload = {
   error?: string;
 };
 
-export default function CheckoutReturnPage() {
+function CheckoutReturnInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const { clearCart } = useCart();
@@ -75,7 +75,9 @@ export default function CheckoutReturnPage() {
           // Si paiement OK → on clear le panier et on redirige vers la page succès
           if (data.paymentStatus === "PAID" && data.orderId) {
             clearCart();
-            router.replace(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
+            router.replace(
+              `/checkout/success?orderId=${encodeURIComponent(data.orderId)}`
+            );
           }
         }
       } catch (e) {
@@ -126,7 +128,10 @@ export default function CheckoutReturnPage() {
       <section className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
         <div className="border border-zinc-200 rounded-3xl bg-white shadow-sm px-5 py-8 sm:px-8 sm:py-10 text-center space-y-4">
           <p className="text-[11px] text-zinc-500">
-            Référence : <span className="font-mono text-zinc-900">{transactionId || "—"}</span>
+            Référence :{" "}
+            <span className="font-mono text-zinc-900">
+              {transactionId || "—"}
+            </span>
           </p>
 
           {payload.error ? (
@@ -183,19 +188,34 @@ export default function CheckoutReturnPage() {
               <h2 className="text-lg sm:text-xl font-semibold tracking-tight">
                 Paiement confirmé
               </h2>
-              <p className="text-sm text-zinc-600">
-                Redirection en cours…
-              </p>
+              <p className="text-sm text-zinc-600">Redirection en cours…</p>
             </>
           )}
 
           <div className="pt-3">
-            <Link href="/boutique" className="text-[11px] text-zinc-500 hover:text-zinc-800">
+            <Link
+              href="/boutique"
+              className="text-[11px] text-zinc-500 hover:text-zinc-800"
+            >
               ← Continuer mes achats
             </Link>
           </div>
         </div>
       </section>
     </main>
+  );
+}
+
+export default function CheckoutReturnPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white text-zinc-900 flex items-center justify-center">
+          <p className="text-sm text-zinc-500">Chargement…</p>
+        </main>
+      }
+    >
+      <CheckoutReturnInner />
+    </Suspense>
   );
 }

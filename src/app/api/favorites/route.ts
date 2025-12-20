@@ -8,10 +8,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.email) {
-    return NextResponse.json(
-      { error: "Non autorisé" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -25,9 +22,7 @@ export async function GET() {
 
   const favorites = await prisma.favorite.findMany({
     where: { userId: user.id },
-    include: {
-      product: true,
-    },
+    include: { product: true },
   });
 
   const formatted = favorites.map((fav) => ({
@@ -47,15 +42,17 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.email) {
-    return NextResponse.json(
-      { error: "Non autorisé" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
-  const productIds = Array.isArray(body?.productIds)
-    ? body.productIds.filter((id: any) => typeof id === "string")
+
+  // ✅ Force le type à string[]
+  const productIds: string[] = Array.isArray(body?.productIds)
+    ? (body.productIds as unknown[])
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter(Boolean)
     : [];
 
   try {
@@ -69,7 +66,8 @@ export async function POST(req: NextRequest) {
         throw new Error("USER_NOT_FOUND");
       }
 
-      const uniqueIds = Array.from(new Set(productIds));
+      // ✅ uniqueIds est bien string[]
+      const uniqueIds: string[] = Array.from(new Set<string>(productIds));
 
       // On supprime tous les favoris puis on recrée
       await tx.favorite.deleteMany({
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
         await tx.favorite.createMany({
           data: uniqueIds.map((productId) => ({
             userId: user.id,
-            productId,
+            productId, // ✅ string
           })),
         });
       }
@@ -89,10 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     if (error instanceof Error && error.message === "USER_NOT_FOUND") {
-      return NextResponse.json(
-        { error: "Utilisateur introuvable." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Utilisateur introuvable." }, { status: 400 });
     }
 
     console.error("Erreur POST /api/favorites:", error);
