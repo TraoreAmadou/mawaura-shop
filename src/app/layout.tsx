@@ -23,11 +23,9 @@ export const metadata: Metadata = {
   },
   description: "Bijoux pour révéler votre aura.",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon.png", type: "image/png" },
-    ],
+    icon: [{ url: "/icon.png" }],
     shortcut: ["/favicon.ico"],
+    // apple: [{ url: "/apple-icon.png" }],
   },
 };
 
