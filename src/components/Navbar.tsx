@@ -25,7 +25,7 @@ export function Navbar() {
   const isAuthenticated = status === "authenticated";
   const userName = session?.user?.name || "Mon compte";
 
-  // ✅ Mobile menu full-screen
+  // ✅ Mobile menu “card panel”
   const [open, setOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -48,7 +48,7 @@ export function Navbar() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  // Bloquer scroll derrière
+  // Bloquer scroll derrière (utile même en “card”)
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -192,7 +192,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* ✅ MOBILE MENU FULLSCREEN */}
+      {/* ✅ MOBILE MENU “CARD PANEL” */}
       <div
         className={cn(
           "sm:hidden fixed inset-0 z-50 transition-opacity",
@@ -200,34 +200,34 @@ export function Navbar() {
         )}
         aria-hidden={!open}
       >
-        {/* ✅ overlay plus visible + blur (pour éviter que le menu “se perde” sur fond blanc) */}
+        {/* overlay */}
         <div
           className={cn(
-            "absolute inset-0 bg-black/55 backdrop-blur-[1px] transition-opacity duration-200",
+            "absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity duration-200",
             open ? "opacity-100" : "opacity-0"
           )}
           onClick={() => setOpen(false)}
         />
 
-        {/* ✅ panel plein écran : bien opaque + shadow/ring */}
+        {/* panel : une “carte” sous la navbar */}
         <div
           className={cn(
-            "absolute inset-0 bg-white shadow-2xl ring-1 ring-zinc-200 transition-transform duration-200",
-            open ? "translate-y-0" : "translate-y-2"
+            "absolute left-3 right-3 top-[4.25rem] rounded-3xl bg-white shadow-2xl ring-1 ring-zinc-200 overflow-hidden transition-all duration-200",
+            open ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
           )}
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* header menu */}
-          <div className="h-16 px-4 border-b border-zinc-200 flex items-center justify-between bg-white">
+          {/* header panel */}
+          <div className="px-4 py-3 border-b border-zinc-200 flex items-center justify-between bg-white">
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-[0.22em] uppercase text-zinc-900">
-                MAWAURA
+              <span className="text-xs font-semibold tracking-[0.22em] uppercase text-zinc-900">
+                Menu
               </span>
               <span className="text-[10px] text-zinc-500 tracking-[0.3em] uppercase">
-                Accessories
+                Mawaura
               </span>
             </div>
 
@@ -242,8 +242,8 @@ export function Navbar() {
             </button>
           </div>
 
-          {/* ✅ content scrollable (dvh -> mieux sur mobile) */}
-          <div className="h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-5 space-y-4 bg-white">
+          {/* content : scrollable mais dans une carte */}
+          <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 space-y-4 bg-white">
             {/* liens principaux */}
             <div className="space-y-2">
               {navLinks.map((link) => {
@@ -313,7 +313,7 @@ export function Navbar() {
               )}
             </div>
 
-            {/* favoris / panier (version “grands boutons”) */}
+            {/* favoris / panier (grands boutons) */}
             <div className="grid grid-cols-1 gap-3">
               <Link
                 href="/favoris"
@@ -344,7 +344,7 @@ export function Navbar() {
               </Link>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-1">
               <Link
                 href="/boutique"
                 onClick={() => setOpen(false)}
