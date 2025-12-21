@@ -22,7 +22,15 @@ export const metadata: Metadata = {
     template: "%s — Mawaura Accessories",
   },
   description: "Bijoux pour révéler votre aura.",
+  icons: {
+    icon: [{ url: "/icon.png" }],
+    shortcut: ["/favicon.ico"],
+    // apple: [{ url: "/apple-icon.png" }],
+  },
 };
+
+
+
 
 export default function RootLayout({
   children,
