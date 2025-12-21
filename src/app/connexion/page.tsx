@@ -14,11 +14,17 @@ export default function ConnexionPage() {
   const [isError, setIsError] = useState(false);
   const router = useRouter();
 
-  const handleLoginSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
+  // ✅ Fix iOS: forcer blur avant actions (évite zoom qui reste)
+  const blurActiveElement = () => {
+    if (typeof document === "undefined") return;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
+
+    blurActiveElement();
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -51,6 +57,8 @@ export default function ConnexionPage() {
   ) => {
     event.preventDefault();
     setMessage(null);
+
+    blurActiveElement();
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -168,7 +176,9 @@ export default function ConnexionPage() {
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5 text-zinc-400">•</span>
-                    <p>Bénéficiez d&apos;une expérience plus fluide sur la boutique.</p>
+                    <p>
+                      Bénéficiez d&apos;une expérience plus fluide sur la boutique.
+                    </p>
                   </div>
                 </div>
 
@@ -191,6 +201,7 @@ export default function ConnexionPage() {
                     onClick={() => {
                       setActiveTab("login");
                       setMessage(null);
+                      blurActiveElement();
                     }}
                     className={`flex-1 px-4 py-3 text-center uppercase tracking-[0.22em] ${
                       activeTab === "login"
@@ -205,6 +216,7 @@ export default function ConnexionPage() {
                     onClick={() => {
                       setActiveTab("register");
                       setMessage(null);
+                      blurActiveElement();
                     }}
                     className={`flex-1 px-4 py-3 text-center uppercase tracking-[0.22em] ${
                       activeTab === "register"
@@ -230,10 +242,7 @@ export default function ConnexionPage() {
                 {/* Contenu formulaire */}
                 <div className="p-5 sm:p-6 lg:p-7">
                   {activeTab === "login" ? (
-                    <form
-                      onSubmit={handleLoginSubmit}
-                      className="space-y-4 text-sm"
-                    >
+                    <form onSubmit={handleLoginSubmit} className="space-y-4">
                       <div className="space-y-1.5">
                         <label
                           htmlFor="login-identifier"
@@ -246,7 +255,7 @@ export default function ConnexionPage() {
                           name="identifier"
                           type="text"
                           required
-                          className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                          className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                           placeholder="mawaura_off ou vous@example.com"
                         />
                       </div>
@@ -263,7 +272,7 @@ export default function ConnexionPage() {
                           name="password"
                           type="password"
                           required
-                          className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                          className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                           placeholder="Votre mot de passe"
                         />
                       </div>
@@ -280,6 +289,7 @@ export default function ConnexionPage() {
                         <button
                           type="button"
                           className="uppercase tracking-[0.16em] hover:text-zinc-900"
+                          onClick={blurActiveElement}
                         >
                           Mot de passe oublié ?
                         </button>
@@ -300,6 +310,7 @@ export default function ConnexionPage() {
                           onClick={() => {
                             setActiveTab("register");
                             setMessage(null);
+                            blurActiveElement();
                           }}
                         >
                           Créer un compte
@@ -307,10 +318,7 @@ export default function ConnexionPage() {
                       </p>
                     </form>
                   ) : (
-                    <form
-                      onSubmit={handleRegisterSubmit}
-                      className="space-y-4 text-sm"
-                    >
+                    <form onSubmit={handleRegisterSubmit} className="space-y-4">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
                           <label
@@ -324,7 +332,7 @@ export default function ConnexionPage() {
                             name="firstname"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="Mawa"
                           />
                         </div>
@@ -340,7 +348,7 @@ export default function ConnexionPage() {
                             name="lastname"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="Traoré"
                           />
                         </div>
@@ -359,7 +367,7 @@ export default function ConnexionPage() {
                             name="username"
                             type="text"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="mawaura_off"
                           />
                         </div>
@@ -375,7 +383,7 @@ export default function ConnexionPage() {
                             name="birthdate"
                             type="date"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                           />
                         </div>
                       </div>
@@ -392,7 +400,7 @@ export default function ConnexionPage() {
                             id="register-email"
                             name="email"
                             type="email"
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="vous@example.com"
                           />
                         </div>
@@ -407,7 +415,7 @@ export default function ConnexionPage() {
                             id="register-phone"
                             name="phone"
                             type="tel"
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="+33 6 12 34 56 78"
                           />
                         </div>
@@ -426,7 +434,7 @@ export default function ConnexionPage() {
                             name="password"
                             type="password"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="••••••••"
                           />
                         </div>
@@ -442,7 +450,7 @@ export default function ConnexionPage() {
                             name="passwordConfirm"
                             type="password"
                             required
-                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:border-zinc-900 bg-white"
+                            className="w-full rounded-none border border-zinc-300 px-3 py-2 text-base sm:text-sm focus:outline-none focus:border-zinc-900 bg-white"
                             placeholder="••••••••"
                           />
                         </div>
@@ -468,6 +476,7 @@ export default function ConnexionPage() {
                           onClick={() => {
                             setActiveTab("login");
                             setMessage(null);
+                            blurActiveElement();
                           }}
                         >
                           Se connecter
