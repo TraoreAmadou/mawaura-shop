@@ -4,7 +4,6 @@ import "./globals.css";
 import { CartProvider } from "./cart-context";
 import { Navbar } from "@/components/Navbar";
 import { FavoritesProvider } from "./favorites-context";
-// import AuthSessionProvider from "@/components/SessionProvider";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 
 const geistSans = Geist({
@@ -18,7 +17,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mawaura Accessories",
+  title: {
+    default: "Mawaura Accessories",
+    template: "%s — Mawaura Accessories",
+  },
   description: "Bijoux pour révéler votre aura.",
 };
 
@@ -28,9 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white text-zinc-900`}
       >
         <AuthSessionProvider>
           <CartProvider>
@@ -44,4 +46,3 @@ export default function RootLayout({
     </html>
   );
 }
-
