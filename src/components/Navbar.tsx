@@ -25,36 +25,39 @@ export function Navbar() {
   const isAuthenticated = status === "authenticated";
   const userName = session?.user?.name || "Mon compte";
 
-  // ✅ Mobile menu full-screen
   const [open, setOpen] = useState(false);
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // Fermer quand on change de page
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lastActiveElRef = useRef<HTMLElement | null>(null);
+
+  // Fermer menu au changement de route
   useEffect(() => {
     setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // ESC + focus close
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-
-    if (open) {
-      setTimeout(() => closeBtnRef.current?.focus(), 50);
-    }
-
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
-  // Bloquer scroll derrière
+  // Gestion ESC + lock scroll + focus
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
+
+    lastActiveElRef.current = document.activeElement as HTMLElement | null;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // focus sur bouton fermer
+    setTimeout(() => closeBtnRef.current?.focus(), 0);
+
     return () => {
-      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+      lastActiveElRef.current?.focus?.();
     };
   }, [open]);
 
@@ -71,45 +74,10 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* ✅ Mobile right actions: favoris + panier + menu */}
-        <div className="sm:hidden flex items-center gap-2">
-          <Link
-            href="/favoris"
-            className="relative inline-flex items-center justify-center rounded-full border border-zinc-200 w-10 h-10 text-zinc-700 hover:bg-zinc-50 transition-colors"
-            aria-label="Favoris"
-          >
-            <span className="text-lg">♡</span>
-            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.3rem] h-5 rounded-full bg-zinc-900 text-white text-[10px] font-semibold px-1">
-              {totalFavorites}
-            </span>
-          </Link>
-
-          <Link
-            href="/panier"
-            className="relative inline-flex items-center justify-center rounded-full border border-zinc-200 w-10 h-10 text-zinc-700 hover:bg-zinc-50 transition-colors"
-            aria-label="Panier"
-          >
-            <span className="text-base">🛒</span>
-            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.3rem] h-5 rounded-full bg-yellow-500 text-white text-[10px] font-semibold px-1">
-              {totalQuantity}
-            </span>
-          </Link>
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-200 w-10 h-10 text-zinc-700 hover:bg-zinc-50 transition-colors"
-            aria-label="Ouvrir le menu"
-            aria-expanded={open}
-            onClick={() => setOpen(true)}
-          >
-            <span className="text-lg leading-none">☰</span>
-          </button>
-        </div>
-
-        {/* ✅ Desktop : inchangé */}
-        <div className="hidden sm:flex items-center gap-4">
-          {/* Liens principaux */}
-          <div className="flex items-center gap-4 text-xs sm:text-sm">
+        {/* Liens + actions */}
+        <div className="flex items-center gap-3">
+          {/* Liens principaux (desktop) */}
+          <div className="hidden sm:flex items-center gap-4 text-xs sm:text-sm">
             {navLinks.map((link) => {
               const isActive =
                 pathname === link.href ||
@@ -119,12 +87,11 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={cn(
-                    "uppercase tracking-[0.22em] text-[11px]",
+                  className={`uppercase tracking-[0.22em] ${
                     isActive
                       ? "text-zinc-900"
                       : "text-zinc-500 hover:text-zinc-800"
-                  )}
+                  } text-[11px]`}
                 >
                   {link.label}
                 </Link>
@@ -132,8 +99,31 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Zone compte / auth */}
-          <div className="flex items-center gap-3">
+          {/* Favoris (desktop) */}
+          <Link
+            href="/favoris"
+            className="hidden sm:inline-flex relative items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+          >
+            <span>Favoris</span>
+            <span className="text-sm">♡</span>
+            <span className="inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-zinc-900 text-white text-[10px] font-semibold">
+              {totalFavorites}
+            </span>
+          </Link>
+
+          {/* Panier (desktop) */}
+          <Link
+            href="/panier"
+            className="hidden sm:inline-flex relative items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+          >
+            <span>Panier</span>
+            <span className="inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-yellow-500 text-white text-[10px] font-semibold">
+              {totalQuantity}
+            </span>
+          </Link>
+
+          {/* Zone compte / auth (desktop) */}
+          <div className="hidden sm:flex items-center gap-3">
             {status === "loading" ? (
               <span className="text-[11px] sm:text-xs text-zinc-400">…</span>
             ) : isAuthenticated ? (
@@ -165,34 +155,45 @@ export function Navbar() {
                 Se connecter
               </Link>
             )}
+          </div>
 
-            {/* Favoris */}
+          {/* ✅ Actions mobile: coeur + panier + burger */}
+          <div className="sm:hidden flex items-center gap-2">
             <Link
               href="/favoris"
-              className="relative inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+              className="relative inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white px-3 py-2 text-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+              aria-label="Favoris"
             >
-              <span>Favoris</span>
-              <span className="text-sm">♡</span>
-              <span className="inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-zinc-900 text-white text-[10px] font-semibold">
+              <span className="text-base leading-none">♡</span>
+              <span className="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-zinc-900 text-white text-[10px] font-semibold">
                 {totalFavorites}
               </span>
             </Link>
 
-            {/* Panier */}
             <Link
               href="/panier"
-              className="relative inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 text-[11px] sm:text-xs text-zinc-700 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+              className="relative inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white px-3 py-2 text-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+              aria-label="Panier"
             >
-              <span>Panier</span>
-              <span className="inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-yellow-500 text-white text-[10px] font-semibold">
+              <span className="text-base leading-none">🛒</span>
+              <span className="ml-2 inline-flex items-center justify-center min-w-[1.4rem] h-5 rounded-full bg-yellow-500 text-white text-[10px] font-semibold">
                 {totalQuantity}
               </span>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white w-11 h-11 text-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+              aria-label="Ouvrir le menu"
+            >
+              <span className="text-lg leading-none">☰</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ✅ MOBILE MENU FULLSCREEN */}
+      {/* ✅ MOBILE MENU FULLSCREEN (contrast fix) */}
       <div
         className={cn(
           "sm:hidden fixed inset-0 z-50 transition-opacity",
@@ -200,19 +201,19 @@ export function Navbar() {
         )}
         aria-hidden={!open}
       >
-        {/* overlay */}
+        {/* overlay (plus sombre) */}
         <div
           className={cn(
-            "absolute inset-0 bg-black/40 transition-opacity duration-200",
+            "absolute inset-0 bg-black/60 transition-opacity duration-200",
             open ? "opacity-100" : "opacity-0"
           )}
           onClick={() => setOpen(false)}
         />
 
-        {/* panel plein écran */}
+        {/* panel plein écran (opaque + shadow) */}
         <div
           className={cn(
-            "absolute inset-0 bg-white transition-transform duration-200",
+            "absolute inset-0 bg-white/100 shadow-2xl transition-transform duration-200",
             open ? "translate-y-0" : "translate-y-2"
           )}
           role="dialog"
@@ -221,7 +222,7 @@ export function Navbar() {
           onClick={(e) => e.stopPropagation()}
         >
           {/* header menu */}
-          <div className="h-16 px-4 border-b border-zinc-200 flex items-center justify-between">
+          <div className="h-16 px-4 border-b border-zinc-200 bg-white flex items-center justify-between">
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-[0.22em] uppercase text-zinc-900">
                 MAWAURA
@@ -234,7 +235,7 @@ export function Navbar() {
             <button
               ref={closeBtnRef}
               type="button"
-              className="inline-flex items-center justify-center rounded-full border border-zinc-200 w-10 h-10 text-zinc-700 hover:bg-zinc-50 transition-colors"
+              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white w-10 h-10 text-zinc-800 hover:bg-zinc-50 transition-colors"
               aria-label="Fermer le menu"
               onClick={() => setOpen(false)}
             >
@@ -243,7 +244,7 @@ export function Navbar() {
           </div>
 
           {/* content scrollable */}
-          <div className="h-[calc(100vh-4rem)] overflow-y-auto px-4 py-5 space-y-4">
+          <div className="h-[calc(100vh-4rem)] overflow-y-auto px-4 py-5 space-y-4 bg-white">
             {/* liens principaux */}
             <div className="space-y-2">
               {navLinks.map((link) => {
@@ -257,13 +258,14 @@ export function Navbar() {
                     href={link.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "block w-full rounded-2xl px-4 py-4 border text-zinc-800",
+                      "block w-full rounded-2xl px-4 py-4 border text-zinc-900",
+                      "bg-zinc-50 border-zinc-200",
                       isActive
-                        ? "border-yellow-200 bg-yellow-50"
-                        : "border-zinc-200 hover:bg-zinc-50"
+                        ? "bg-yellow-50 border-yellow-200"
+                        : "hover:bg-zinc-100"
                     )}
                   >
-                    <span className="uppercase tracking-[0.18em] text-[12px] font-medium">
+                    <span className="uppercase tracking-[0.18em] text-[12px] font-semibold">
                       {link.label}
                     </span>
                   </Link>
@@ -272,12 +274,12 @@ export function Navbar() {
             </div>
 
             {/* bloc compte */}
-            <div className="border border-zinc-200 rounded-3xl p-4 space-y-3">
+            <div className="border border-zinc-200 bg-zinc-50 rounded-3xl p-4 space-y-3">
               {status === "loading" ? (
-                <div className="text-sm text-zinc-500">Chargement…</div>
+                <div className="text-sm text-zinc-600">Chargement…</div>
               ) : isAuthenticated ? (
                 <>
-                  <div className="text-sm text-zinc-900 font-medium">
+                  <div className="text-sm text-zinc-900 font-semibold">
                     {userName.length > 26 ? `${userName.slice(0, 24)}…` : userName}
                   </div>
 
@@ -296,7 +298,7 @@ export function Navbar() {
                         setOpen(false);
                         signOut({ callbackUrl: "/" });
                       }}
-                      className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white px-4 py-3 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-700 hover:bg-zinc-50 transition"
+                      className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-3 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-800 hover:bg-zinc-50 transition"
                     >
                       Se déconnecter
                     </button>
@@ -313,16 +315,16 @@ export function Navbar() {
               )}
             </div>
 
-            {/* favoris / panier (version “grands boutons”) */}
+            {/* favoris / panier (gros boutons) */}
             <div className="grid grid-cols-1 gap-3">
               <Link
                 href="/favoris"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-between rounded-3xl border border-zinc-200 px-4 py-4 text-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+                className="inline-flex items-center justify-between rounded-3xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-zinc-900 hover:bg-zinc-100 transition-colors"
               >
                 <span className="inline-flex items-center gap-2">
                   <span className="text-base">♡</span>
-                  <span className="text-sm font-medium">Favoris</span>
+                  <span className="text-sm font-semibold">Favoris</span>
                 </span>
                 <span className="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full bg-zinc-900 text-white text-[12px] font-semibold px-2">
                   {totalFavorites}
@@ -332,11 +334,11 @@ export function Navbar() {
               <Link
                 href="/panier"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-between rounded-3xl border border-zinc-200 px-4 py-4 text-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 transition-colors"
+                className="inline-flex items-center justify-between rounded-3xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-zinc-900 hover:bg-zinc-100 transition-colors"
               >
                 <span className="inline-flex items-center gap-2">
                   <span className="text-base">🛒</span>
-                  <span className="text-sm font-medium">Panier</span>
+                  <span className="text-sm font-semibold">Panier</span>
                 </span>
                 <span className="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full bg-yellow-500 text-white text-[12px] font-semibold px-2">
                   {totalQuantity}
@@ -348,7 +350,7 @@ export function Navbar() {
               <Link
                 href="/boutique"
                 onClick={() => setOpen(false)}
-                className="block text-center text-[11px] text-zinc-500 hover:text-zinc-800"
+                className="block text-center text-[11px] text-zinc-600 hover:text-zinc-900"
               >
                 Continuer mes achats →
               </Link>
